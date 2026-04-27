@@ -1,12 +1,12 @@
-# Info Logger
+# Info Logger — Structured Logging + Event Analysis + GUI Viewer
 
 🚀 A powerful logging system that turns logs into **debuggable events**
 
-<img src="docs/image/main_window.png" width="900">
+<img src="docs/image/main_window.png" alt="Log Viewer Main Window" width="900">
 
 ## 🔍 Detail View
 
-<img src="docs/image/sub_window.png" width="900">
+<img src="docs/image/sub_window.png" alt="Log Viewer Sub Window" width="900">
 
 Info Logger is a **structured logging + analysis + GUI viewer tool**
 designed to make debugging faster, clearer, and more intuitive.
@@ -30,14 +30,15 @@ Info Logger goes further:
 
 ## 💡 Why Info Logger?
 
-Most loggers only tell you *what happened*.
+### 🚀 What makes this different?
 
-👉 Info Logger tells you:
-- What was expected
-- What actually happened
-- Where it went wrong
+- Most loggers:
+❌ Only record logs
 
-This transforms logs into **actionable debugging insights**.
+- Info Logger:
+⭕ Turns logs into debuggable events
+⭕ Shows intent vs result
+⭕ Detects hidden failures
 
 ---
 
@@ -196,7 +197,6 @@ Additionally, the structure is designed to be easy to write, so developers can n
 This Logger is not just a logging tool.
 It is a **design tool for ensuring state transparency and early detection of issues**.
 
-
 This is not just a logger.
 
 👉 It is a diagnostic system for understanding program behavior.
@@ -242,3 +242,9 @@ Instead of only seeing that something failed, you can immediately understand:
 - Which data caused the deviation
 
 This makes debugging faster and prevents silent failures from going unnoticed.
+
+---
+
+If this project helps you,
+
+**⭐ Please consider giving it a star!**
