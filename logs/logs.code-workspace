@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"python.languageServer": "Pylance",
+		"ruff.enable": true,
+		"breadcrumbs.enabled": true,
+		"terminal.integrated.scrollback": 10000,
+		"cSpell.words": [
+			"hankaku",
+			"recalc",
+			"uncomputed"
+		]
+	}
+}
