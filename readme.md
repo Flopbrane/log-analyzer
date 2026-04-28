@@ -1,8 +1,16 @@
-# Info Logger — Structured Logging + Event Analysis + GUI Viewer
+# Info Logger
 
 🚀 A powerful logging system that turns logs into **debuggable events**
 
 > Not just logs — this is a **diagnostic system**.
+
+---
+
+## ✨ What’s Included
+
+- Structured Logging
+- Event Analysis
+- GUI Viewer
 
 ---
 
@@ -36,13 +44,13 @@ Info Logger goes further:
 
 ### 🚀 What makes this different?
 
-- Most loggers:
-❌ Only record logs
+⭐ Most loggers:  
+❌ Only record logs  
 
-- Info Logger:
-⭕ Turns logs into debuggable events
-⭕ Shows intent vs result
-⭕ Detects hidden failures
+⭐ Info Logger:  
+⭕ Turns logs into debuggable events  
+⭕ Shows intent vs result  
+⭕ Detects hidden failures  
 
 ---
 
@@ -108,19 +116,17 @@ python -m logs.log_viewer
 
 ## 🧱 Architecture
 
-```text
-Application
+Application  
+    ↓  
+Logger (AppLogger)  
     ↓
-Logger (AppLogger)
-    ↓
-JSON Lines Log File
-    ↓
-log_searcher (analysis)
-    ↓
-Log Events
-    ↓
-log_viewer (GUI)
-```
+JSON Lines Log File  
+    ↓  
+log_searcher (analysis)  
+    ↓  
+Log Events  
+    ↓  
+log_viewer (GUI)  
 
 ---
 
@@ -141,14 +147,14 @@ log_viewer (GUI)
 
 ## 📂 Project Structure
 
-logs/
-├ multi_info_logger.py   # Core logger
-├ log_storage.py         # I/O layer
-├ log_searcher.py        # Analysis
-├ log_viewer.py          # GUI
-├ log_types.py
-├ time_utils.py
-└ log_paths.py
+logs/  
+├ multi_info_logger.py   # Core logger  
+├ log_storage.py         # I/O layer  
+├ log_searcher.py        # Analysis  
+├ log_viewer.py          # GUI  
+├ log_types.py  
+├ time_utils.py  
+└ log_paths.py  
 
 ---
 
@@ -179,6 +185,7 @@ For Japanese users:
 This Logger was designed to eliminate **"silent failures"** that can occur during normal operation.
 
 In many systems, issues do not always raise explicit errors.
+
 As a result, problems may go unnoticed or become difficult to trace.
 
 To address this, this Logger adopts a design that explicitly records **state and intent**.
@@ -195,11 +202,14 @@ This makes it possible to clearly understand:
 - What values were expected
 - Where deviations occurred
 
-Additionally, the structure is designed to be easy to write, so developers can naturally include this information without friction.
+Additionally, the structure is designed to be easy to write,
+
+so developers can naturally include this information without friction.
 
 ---
 
 This Logger is not just a logging tool.
+
 It is a **design tool for ensuring state transparency and early detection of issues**.
 
 This is not just a logger.
@@ -255,6 +265,7 @@ This makes debugging faster and prevents silent failures from going unnoticed.
 ### 🤖 Acknowledgment
 
 Developed with assistance from ChatGPT (OpenAI).
+
 With sincere appreciation for the support provided.
 
 This project is not affiliated with or endorsed by OpenAI.
