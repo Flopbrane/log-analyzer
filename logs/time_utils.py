@@ -187,3 +187,36 @@ def to_jst_str(value: DateLike) -> str | None:
     if dt is None:
         return ""
     return dt.astimezone(JST).isoformat(timespec="seconds")
+
+
+# ========================
+# Local_Time changer
+# ========================
+def to_local_datetime(
+    value: DateLike,
+    tz: str = "Asia/Tokyo",
+    *,
+    logger: LoggerLike | None = None,
+) -> datetime | None:
+    """任意タイムゾーンdatetimeへ変換（最終出口）"""
+    dt: datetime | None = to_utc_datetime(value, logger=logger)
+    if dt is None:
+        return None
+
+    try:
+        return dt.astimezone(ZoneInfo(tz))
+    except Exception:
+        if logger:
+            logger.warning(f"Invalid timezone: {tz}")
+        return None
+
+
+def to_local_str(
+    value: DateLike,
+    tz: str = "Asia/Tokyo",
+) -> str:
+    """任意タイムゾーンstrへ変換（最終出口）"""
+    dt: datetime | None = to_local_datetime(value, tz)
+    if dt is None:
+        return ""
+    return dt.isoformat(timespec="seconds")

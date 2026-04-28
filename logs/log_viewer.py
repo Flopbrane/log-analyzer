@@ -19,6 +19,8 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 from typing import Any, Final, Union
 
+from zoneinfo import ZoneInfo, available_timezones
+
 from logs.display_formatter import LogRenderer
 from logs.log_app import get_logger
 from logs.log_paths import LOGS_DIR
@@ -631,6 +633,28 @@ class LogViewer:
         except Exception as e:
             print(f"extract error: {e}")  # デバッグ🔥
             return None, 1
+
+    # ==========Get_TimeZoneList===========
+    def get_available_timezones_display(self) -> list[str]:
+        """
+        UI表示用のTimeZoneリストを作成
+        例: Asia/Tokyo (UTC+09:00)
+        """
+        result: list[str] = []
+
+        now_utc: datetime = datetime.now(ZoneInfo("UTC"))
+
+        for tz in sorted(available_timezones()):
+            try:
+                dt_local: datetime = now_utc.astimezone(ZoneInfo(tz))
+                offset: str = dt_local.strftime("%z")  # +0900
+                offset_str: str = f"{offset[:3]}:{offset[3:]}"  # +09:00
+
+                result.append(f"{tz} (UTC{offset_str})")
+            except Exception:
+                continue
+
+        return result
 
     # ===============================
     # 🔹 詳細ウィンドウ表示
