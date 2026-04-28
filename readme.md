@@ -2,6 +2,10 @@
 
 🚀 A powerful logging system that turns logs into **debuggable events**
 
+> Not just logs — this is a **diagnostic system**.
+
+---
+
 <img src="docs/image/main_window.png" alt="Log Viewer Main Window" width="900">
 
 ## 🔍 Detail View
@@ -72,6 +76,7 @@ Info Logger goes further:
 
 ```bash
 git clone https://github.com/Flopbrane/log-analyzer.git
+
 cd log-analyzer
 ```
 
@@ -143,7 +148,7 @@ logs/
 ├ log_viewer.py          # GUI
 ├ log_types.py
 ├ time_utils.py
-└ env_paths.py
+└ log_paths.py
 
 ---
 
@@ -242,6 +247,17 @@ Instead of only seeing that something failed, you can immediately understand:
 - Which data caused the deviation
 
 This makes debugging faster and prevents silent failures from going unnoticed.
+
+---
+
+---
+
+### 🤖 Acknowledgment
+
+Developed with assistance from ChatGPT (OpenAI).
+With sincere appreciation for the support provided.
+
+This project is not affiliated with or endorsed by OpenAI.
 
 ---
 
