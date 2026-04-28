@@ -1,5 +1,11 @@
 # Info Logger
 
+![version](https://img.shields.io/badge/version-v0.1.0-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![python](https://img.shields.io/badge/python-3.9%2B-blue)
+![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
+> ⚠ Requires Python 3.9 or higher
+
 🚀 A powerful logging system that turns logs into **debuggable events**
 
 > Not just logs — this is a **diagnostic system**.
@@ -18,10 +24,10 @@
 
 ## 🔍 Detail View
 
-<img src="docs/image/sub_window.png" alt="Log Viewer Sub Window" width="900">
+<img src="docs/image/sub_window.png" alt="Log Viewer Sub Window" width="600">
 
-Info Logger is a **structured logging + analysis + GUI viewer tool**
-designed to make debugging faster, clearer, and more intuitive.
+Info Logger is a **structured logging + analysis + GUI viewer tool**  
+designed to make debugging faster, clearer, and more intuitive.  
 
 - For Japanese version → README_jp.md
 
@@ -29,12 +35,15 @@ designed to make debugging faster, clearer, and more intuitive.
 
 ## 🚀 What is this?
 
-Most loggers only *record logs*.  
-Info Logger goes further:
+Designed to make debugging faster, clearer, and more intuitive.
 
-- ✅ Structured logging (JSON Lines)
-- ✅ Built-in analysis (error / trace / reboot detection)
-- ✅ GUI viewer for instant inspection
+Most loggers only *record logs*.
+
+Info Logger goes further by:
+
+- ✅ Recording logs as structured data (JSON Lines)
+- ✅ Converting logs into analyzable events
+- ✅ Providing a GUI for instant inspection
 
 👉 Logs are not just outputs — they are **system events**.
 
@@ -45,14 +54,15 @@ Info Logger goes further:
 ### 🚀 What makes this different?
 
 ⭐ Most loggers:  
-❌ Only record logs  
 
-⭐ Info Logger:  
-⭕ Turns logs into debuggable events  
-⭕ Shows intent vs result  
-⭕ Detects hidden failures  
+- ❌ Only record logs
 
----
+⭐ Info Logger:
+
+- ⭕ Treats logs as structured data (JSON Lines)
+- ⭕ Turns logs into **debuggable events**
+- ⭕ Reveals **intent vs actual results**
+- ⭕ Detects **hidden and silent failures**
 
 ## ✨ Features
 
@@ -117,15 +127,13 @@ python -m logs.log_viewer
 ## 🧱 Architecture
 
 Application  
-    ↓  
+↓  
 Logger (AppLogger)  
-    ↓
+↓  
 JSON Lines Log File  
-    ↓  
+↓  
 log_searcher (analysis)  
-    ↓  
-Log Events  
-    ↓  
+↓  
 log_viewer (GUI)  
 
 ---
@@ -147,14 +155,21 @@ log_viewer (GUI)
 
 ## 📂 Project Structure
 
-logs/  
-├ multi_info_logger.py   # Core logger  
-├ log_storage.py         # I/O layer  
-├ log_searcher.py        # Analysis  
-├ log_viewer.py          # GUI  
-├ log_types.py  
-├ time_utils.py  
-└ log_paths.py  
+```text
+logs/
+├ multi_info_logger.py
+├ log_storage.py
+├ log_searcher.py
+├ log_viewer.py
+├ log_types.py
+├ time_utils.py
+└ log_paths.py
+
+# Core logger: multi_info_logger.py
+# I/O layer: log_storage.py
+# Analysis: log_searcher.py
+# GUI: log_viewer.py
+```
 
 ---
 
@@ -260,13 +275,9 @@ This makes debugging faster and prevents silent failures from going unnoticed.
 
 ---
 
----
-
 ### 🤖 Acknowledgment
 
-Developed with assistance from ChatGPT (OpenAI).
-
-With sincere appreciation for the support provided.
+Developed with assistance from ChatGPT (OpenAI), with sincere appreciation.
 
 This project is not affiliated with or endorsed by OpenAI.
 
