@@ -173,6 +173,14 @@ logs/
 
 ---
 
+### Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
 ### 🇯🇵 Japanese Documentation
 
 For Japanese users:
@@ -263,15 +271,15 @@ logger.info(
 }
 ```
 
-### Why this matters
+### 💡 Why this matters
 
-Instead of only seeing that something failed, you can immediately understand:
+Instead of simply seeing that something failed, you can immediately understand:
 
 - What was expected
 - What actually happened
 - Which data caused the deviation
 
-This makes debugging faster and prevents silent failures from going unnoticed.
+This significantly speeds up debugging and helps prevent silent failures from going unnoticed.
 
 ---
 
@@ -283,6 +291,8 @@ This project is not affiliated with or endorsed by OpenAI.
 
 ---
 
-If this project helps you,
+### ⭐ Support
 
-**⭐ Please consider giving it a star!**
+If you find this project helpful,
+
+**please consider giving it a star on GitHub!**

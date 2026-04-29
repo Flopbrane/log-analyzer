@@ -1,5 +1,11 @@
 # Info Logger（日本語版）
 
+![version](https://img.shields.io/badge/version-v0.1.0-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![python](https://img.shields.io/badge/python-3.9%2B-blue)
+![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
+>⚠ Python 3.9 以上が必要です
+
 Info Logger は、  
 **ログ出力・分析・可視化を一体化したログシステム**です。
 
@@ -25,7 +31,7 @@ Info Logger は、
 ### 🔍 trace_id による追跡
 
 - 処理の流れをセッション単位で追跡可能
-- trace.idは起動に対して、"Windows"でのソフト起動に対して、一意のIDである。
+- trace_id は、アプリケーションの起動ごとに一意に割り当てられるIDです。
 
 ---
 
@@ -64,6 +70,7 @@ Info Logger は、
 
 ```bash
 git clone https://github.com/yourname/Info_Logger.git
+
 cd Info_Logger
 ```
 
@@ -95,19 +102,17 @@ python -m logs.log_viewer
 
 ## 🧱 アーキテクチャ
 
-```text
-アプリケーション
-    ↓
-Logger（AppLogger）
-    ↓
-JSON Linesログファイル
-    ↓
-log_searcher（解析）
-    ↓
-イベント（LogEvent）
-    ↓
-log_viewer（GUI表示）
-```
+アプリケーション  
+↓  
+Logger（AppLogger）  
+↓  
+JSON Linesログファイル  
+↓  
+log_searcher（解析）  
+↓  
+イベント（LogEvent）  
+↓  
+log_viewer（GUI表示）  
 
 ---
 
@@ -130,13 +135,18 @@ log_viewer（GUI表示）
 
 ```text
 logs/
-├ multi_info_logger.py   # コアロガー
-├ log_storage.py         # I/O層
-├ log_searcher.py        # 解析
-├ log_viewer.py          # GUI
+├ multi_info_logger.py
+├ log_storage.py
+├ log_searcher.py
+├ log_viewer.py
 ├ log_types.py
 ├ time_utils.py
-└ env_paths.py
+└ log_paths.py
+
+# コアロガー: multi_info_logger.py
+# I/O層: log_storage.py
+# 解析: log_searcher.py
+# GUI: log_viewer.py
 ```
 
 ## 📚 詳細ドキュメント
@@ -180,18 +190,20 @@ logs/
 - ログは　**「開発者の理解を深めるためのツール」**です。
 - ログは　**「プログラムの挙動を可視化するためのイベント」**です。
 
-## ## なぜこのLoggerを作成したのか
+## なぜこのLoggerを作成したのか
 
-このLoggerは、通常の運用において発生しがちな
+このLoggerは、通常の運用において発生しがちな  
 **「静かに壊れる（Silent Failure）」問題を排除すること**を目的として設計されています。
 
-一般的なログでは、エラーが明示的に出ない限り、問題の発見が遅れたり、原因の追跡が困難になるケースがあります。
-本Loggerではその課題を解決するために、**状態や意図を明示的に記録する設計**を採用しています。
+一般的なログでは、エラーが明示的に出ない限り、問題の発見が遅れたり、原因の追跡が困難になるケースがあります。  
+本Loggerではその課題を解決するために、**状態や意図を明示的に記録する設計**を採用しています。  
+
+そのため  
 
 特に、以下の形式で情報を記録できるようにしています。
 
 ```python
-context: dict {変数 / プロパティ : 意図した値}
+context: dict[str, Any]  # {変数 / プロパティ : 意図した値}
 ```
 
 この設計により、
@@ -200,13 +212,13 @@ context: dict {変数 / プロパティ : 意図した値}
 - 「どの値を前提としていたのか」
 - 「どこでズレが発生したのか」
 
-を、ログから直接読み取ることが可能になります。
+を、ログから直接読み取ることが可能になります。  
 
 また、記述のしやすさも重視し、開発者が自然にこの情報を残せるような構造にしています。
 
 ---
 
-このLoggerは単なる記録ツールではなく、
+このLoggerは単なる記録ツールではなく、  
 **「状態の透明性」を担保し、問題を早期に検知するための設計ツール**です。
 
 ## contextの使用例
@@ -256,15 +268,31 @@ logger.warning(
 )
 ```
 
-## この設計の重要性
+### 💡 なぜこれが重要なのか
 
-**単に「失敗した」という情報だけ**でなく、
+単に「失敗した」という結果だけでなく、
 
-- 何を意図していたのか
+- 何を想定していたのか
 - 実際に何が起きたのか
-- どの値がズレていたのか
+- どのデータが原因だったのか
 
-を**ログから直接読み取ること**ができます。
+を、ログから直接把握することができます。
 
-これにより、問題の特定が高速になり、
-**「静かに壊れる状態」**を見逃さない設計になります。
+これにより、デバッグのスピードが大幅に向上し、  
+「静かに壊れる（Silent Failure）」状態を見逃さない設計になります。
+
+---
+
+### 🤖 謝辞
+
+本プロジェクトは、ChatGPT（OpenAI）の支援を受けて開発されました。  
+ここに深く感謝の意を表します。
+
+なお、本プロジェクトは OpenAI とは関係なく、また公式に承認されたものではありません。
+
+---
+
+### ⭐ サポート
+
+本プロジェクトが役に立ったと感じていただけた場合は、  
+GitHubで⭐を付けていただけると励みになります！
