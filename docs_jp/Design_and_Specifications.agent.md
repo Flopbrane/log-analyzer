@@ -264,4 +264,16 @@ class LogRecord(TypedDict, total=False):
     what: LogWhat
     context: dict[str, Any]
     output: str
+
+@dataclass(slots=True)
+class Event:
+    """イベント分析後のデータ"""
+    type: EventType | None  # 分析結果
+    level: LogLevel  # 元ログレベル ←追加🔥
+    time: str
+    detected_at: str  # ←追加🔥
+    trace_id: TraceId
+    message: str
+    data: dict[str, Any]
+    raw: LogDict  # 元ログ保持（デバッグ最強）
 ```

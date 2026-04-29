@@ -11,6 +11,14 @@ Info Logger は、
 
 ---
 
+## メインウインドウ
+
+<img src="docs/image/main_window.png" alt="Log Viewer Main Window" width="900">
+
+## 🔍 詳細ウインドウ
+
+<img src="docs/image/sub_window.png" alt="Log Viewer Sub Window" width="600">
+
 ## 🎯 これは何？
 
 一般的なロガーは **「ログを出すだけ」** です。

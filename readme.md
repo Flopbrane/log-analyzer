@@ -181,6 +181,13 @@ pip install -r requirements.txt
 
 ---
 
+## 📚 Documentation
+
+- Design → docs/Design.md
+- Usage → docs/How_to_use.md
+
+---
+
 ### 🇯🇵 Japanese Documentation
 
 For Japanese users:
