@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "log-analyzer"
+version = "0.1.0"
+description = "Structured logging + event analysis + GUI viewer"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "F.Kurokawa" }
+]
+
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
