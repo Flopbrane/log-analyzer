@@ -24,6 +24,7 @@ def load_log(log_path: Path) -> list[dict[str, Any]]:
         print(f"Failed to load log file {log_path}: {e}")
     return log_entries
 
+
 def load_multi_logs(log_paths: list[Path]) -> list[dict[str, Any]]:
     """複数のログファイルを読み込み、時系列でソートして返す"""
     all_logs: list[dict[str, Any]] = []
@@ -34,6 +35,7 @@ def load_multi_logs(log_paths: list[Path]) -> list[dict[str, Any]]:
     # 🔥 時系列ソート
     all_logs.sort(key=lambda x: str(x.get("time", "")))
     return all_logs
+
 
 def save_log(log_path: Path, log_entry: dict[str, Any]) -> None:
     """ログエントリをファイルに保存する"""

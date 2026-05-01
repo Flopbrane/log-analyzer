@@ -4,13 +4,13 @@
 #########################
 # Author: F.Kurokawa
 # Description:
-#
+# Display formatter
 #########################
 from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from logs.log_types import Event, LogDict, LogWhere
@@ -81,6 +81,16 @@ class LogRenderer:
     # 🔹 時刻整形
     # =========================
     def format_time(self, value: Any) -> str:
+        """時刻整形"""
+        dt: datetime | None = to_jst_datetime(value)
+        if dt and 2000 <= dt.year <= 2100:
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        return str(value)
+
+    # =========================
+    # 🔹 時刻整形(Timezone対応)
+    # =========================
+    def format_time_to_local_dt(self, value: Any, tz: str) -> str:
         """時刻整形"""
         dt: datetime | None = to_jst_datetime(value)
         if dt and 2000 <= dt.year <= 2100:

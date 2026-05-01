@@ -17,9 +17,9 @@ import tkinter as tk
 from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, ttk
-from typing import Any, Final, Union
+from typing import Any, Final, Union, TYPE_CHECKING
 
-from zoneinfo import ZoneInfo, available_timezones
+from zoneinfo import ZoneInfo
 
 from logs.display_formatter import LogRenderer
 from logs.log_app import get_logger
@@ -28,8 +28,16 @@ from logs.log_searcher import collect_logs, summarize
 from logs.log_storage import load_log
 from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
-from logs.multi_info_logger import AppLogger
-from logs.time_utils import to_jst_datetime, to_utc_datetime
+from logs.time_utils import (
+    to_jst_datetime,
+    to_utc_datetime,
+    list_timezones_formatted,
+    to_local_datetime,
+)
+
+if TYPE_CHECKING:
+    from logs.multi_info_logger import AppLogger
+
 
 ParentWidget = Union[tk.Tk, tk.Toplevel]
 
@@ -131,13 +139,72 @@ class LogViewer:
         self.type_dropdown: ttk.Combobox
         self.tree: ttk.Treeview
         self.search_var = tk.StringVar()
+        # ===== UI変数 =====
+        self.tz_var = tk.StringVar()
 
-        self.logger: AppLogger = get_logger()
+        self.logger: "AppLogger" = get_logger()
+        # TimeZoneのリスト取得準備
+        self.tz_list: list[tuple[str, str]] = list_timezones_formatted()
+        self.tz_map: dict[str, str] = {label: tz for tz, label in self.tz_list}
         # 画像描画
         self._build_ui()
+        # ===== UI構築 =====
+        self._build_timezone_dropdown()
 
         if initial_log_path is not None:
             self.reload_log(initial_log_path)
+
+    # ======================
+    # TimeZone_list 取得
+    # ======================
+    def get_tz_list(self) -> list[tuple[str, str]]:
+        """timezoneのlist取得"""
+        return self.tz_list
+    # =======================
+    # TZ DropDown List
+    # =======================
+    def _build_timezone_dropdown(self) -> None:
+        """TimeZoneドロップダウン作成"""
+
+        frame = tk.Frame(self.root)
+        frame.pack(pady=5)
+
+        # ラベル
+        tk.Label(frame, text="TimeZone:").pack(side=tk.LEFT)
+
+        # 表示用リスト
+        tz_labels = [label for _, label in self.tz_list]
+
+        # 初期値（Tokyo）
+        default_label = next(
+            (label for tz, label in self.tz_list if tz == "Asia/Tokyo"),
+            tz_labels[0],
+        )
+        self.tz_var.set(default_label)
+
+        # Combobox
+        self.tz_combo = ttk.Combobox(
+            frame,
+            textvariable=self.tz_var,
+            values=tz_labels,
+            state="readonly",
+            width=30,
+        )
+        self.tz_combo.pack(side=tk.LEFT)
+
+        # イベント
+        self.tz_combo.bind("<<ComboboxSelected>>", self._on_timezone_changed)
+
+    def _on_timezone_changed(self, _event: tk.Event) -> None:
+        """TimeZone変更時"""
+
+        selected_label: str = self.tz_var.get()
+        tz_name: str | None = self.tz_map.get(selected_label)
+
+        print(f"選択されたTimeZone: {tz_name}")
+
+        # 👉 ここで再描画（重要）
+        self.apply_filter()
 
     # =======================
     # 内部の比較は、全てUTCで運用
@@ -633,28 +700,6 @@ class LogViewer:
         except Exception as e:
             print(f"extract error: {e}")  # デバッグ🔥
             return None, 1
-
-    # ==========Get_TimeZoneList===========
-    def get_available_timezones_display(self) -> list[str]:
-        """
-        UI表示用のTimeZoneリストを作成
-        例: Asia/Tokyo (UTC+09:00)
-        """
-        result: list[str] = []
-
-        now_utc: datetime = datetime.now(ZoneInfo("UTC"))
-
-        for tz in sorted(available_timezones()):
-            try:
-                dt_local: datetime = now_utc.astimezone(ZoneInfo(tz))
-                offset: str = dt_local.strftime("%z")  # +0900
-                offset_str: str = f"{offset[:3]}:{offset[3:]}"  # +09:00
-
-                result.append(f"{tz} (UTC{offset_str})")
-            except Exception:
-                continue
-
-        return result
 
     # ===============================
     # 🔹 詳細ウィンドウ表示

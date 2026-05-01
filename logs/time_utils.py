@@ -10,8 +10,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Protocol, TypeAlias, Union, runtime_checkable
-from zoneinfo import ZoneInfo
+from typing import Any, Literal, Protocol, TypeAlias, Union, runtime_checkable
+from zoneinfo import ZoneInfo, available_timezones
 
 from logs.logger_config import LoggerConfig
 
@@ -36,6 +36,9 @@ class LoggerLike(Protocol):
         """エラーレベルのログを出力する"""
         pass
 
+    def critical(self, message: str, context: dict[str, Any] | None = None) -> None:
+        """緊急レベルのログを出力する"""
+        pass
 
 # =========================
 # 型定義
@@ -46,7 +49,7 @@ ISODateTimeStr: TypeAlias = str
 # UNIX時間専用
 UnixTime: TypeAlias = float | int
 
-# 安全な入力型
+# datetimeに対しての安全な入力型
 DateLike: TypeAlias = datetime | date | str | int | float | None
 
 # JSTタイムゾーン
@@ -159,6 +162,95 @@ def to_utc_datetime(
     return None
 
 
+def to_utc_datetime_from_local_dt(
+    value: DateLike = None,
+    tz: str | ZoneInfo = "Asia/Tokyo",
+    *,
+    logger: LoggerLike | None = None,
+) -> datetime | None:
+    """ローカル日時をUTCのdatetimeに変換する"""
+
+    if value is None:
+        return None
+
+    # 🔹 tzをZoneInfoに統一
+    try:
+        tzinfo: ZoneInfo = ZoneInfo(tz) if isinstance(tz, str) else tz
+    except Exception as e:
+        if logger:
+            logger.warning(
+                "Invalid timezone",
+                context={"tz": tz, "error": str(e)},
+            )
+        return None
+
+    # 🔹 datetime
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return (
+                value.replace(tzinfo=tzinfo)
+                .astimezone(timezone.utc)
+                .replace(microsecond=0)
+            )
+        return value.astimezone(timezone.utc).replace(microsecond=0)
+
+    # 🔹 date → 00:00
+    if isinstance(value, date):
+        return (
+            datetime.combine(value, time(0, 0), tzinfo=tzinfo)
+            .astimezone(timezone.utc)
+            .replace(microsecond=0)
+        )
+
+    # 🔹 time（非対応）
+    if isinstance(value, time):
+        if logger:
+            logger.warning("time単体はサポートされていません")
+        return None
+
+    # 🔹 UNIX TIME
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc).replace(microsecond=0)
+        except Exception as e:
+            if logger:
+                logger.warning(
+                    "Invalid UNIX timestamp",
+                    context={"value": value, "error": str(e)},
+                )
+            return None
+
+    # 🔹 str（ISO）
+    if isinstance(value, str):
+        try:
+            dt: datetime = datetime.fromisoformat(value).replace(microsecond=0)
+        except ValueError:
+            if logger:
+                logger.warning(
+                    "Invalid datetime string",
+                    context={"value": value},
+                )
+            return None
+
+        if dt.tzinfo is None:
+            return (
+                dt.replace(tzinfo=tzinfo)
+                .astimezone(timezone.utc)
+                .replace(microsecond=0)
+            )
+
+        return dt.astimezone(timezone.utc).replace(microsecond=0)
+
+    # 🔹 未対応型
+    if logger:
+        logger.warning(
+            "Unsupported type",
+            context={"type": str(type(value))},
+        )
+
+    return None
+
+
 # =========================
 # ISO（UTC）
 # =========================
@@ -194,29 +286,85 @@ def to_jst_str(value: DateLike) -> str | None:
 # ========================
 def to_local_datetime(
     value: DateLike,
-    tz: str = "Asia/Tokyo",
+    tz: str | ZoneInfo = "Asia/Tokyo",
     *,
     logger: LoggerLike | None = None,
 ) -> datetime | None:
     """任意タイムゾーンdatetimeへ変換（最終出口）"""
+
     dt: datetime | None = to_utc_datetime(value, logger=logger)
     if dt is None:
         return None
 
     try:
-        return dt.astimezone(ZoneInfo(tz))
-    except Exception:
+        tzinfo: ZoneInfo = ZoneInfo(tz) if isinstance(tz, str) else tz
+        return dt.astimezone(tzinfo)
+
+    except Exception as e:
         if logger:
-            logger.warning(f"Invalid timezone: {tz}")
+            logger.warning(
+                f"Invalid timezone: {tz}",
+                context={"error": str(e)},
+            )
         return None
 
 
 def to_local_str(
     value: DateLike,
-    tz: str = "Asia/Tokyo",
+    tz: str | ZoneInfo = "Asia/Tokyo",
+    *,
+    logger: LoggerLike | None = None,
 ) -> str:
     """任意タイムゾーンstrへ変換（最終出口）"""
-    dt: datetime | None = to_local_datetime(value, tz)
+
+    dt: datetime | None = to_local_datetime(value, tz, logger=logger)
     if dt is None:
         return ""
+
     return dt.isoformat(timespec="seconds")
+
+
+# ========================
+# Local_list
+# ========================
+def list_timezones_formatted() -> list[tuple[str, str]]:
+    """
+    TimeZone一覧を取得して、
+    (内部名, 表示名) のタプルで返す
+
+    例:
+    ("Asia/Tokyo", "Tokyo (UTC+09:00)")
+    """
+
+    now_utc_dt: datetime = datetime.now(timezone.utc)
+
+    results: list[tuple[str, str]] = []
+
+    for tz_name in sorted(available_timezones()):
+        try:
+            tz = ZoneInfo(tz_name)
+            local_dt: datetime = now_utc_dt.astimezone(tz)
+
+            offset: timedelta | None = local_dt.utcoffset()
+            if offset is None:
+                continue
+
+            total_seconds = int(offset.total_seconds())
+            hours: int = total_seconds // 3600
+            minutes: int = abs((total_seconds % 3600) // 60)
+
+            sign: Literal['+'] | Literal['-'] = "+" if hours >= 0 else "-"
+            offset_str: str = f"UTC{sign}{abs(hours):02d}:{minutes:02d}"
+
+            # 表示名（最後の部分だけ）
+            display_name: str = tz_name.split("/")[-1]
+
+            label: str = f"{display_name} ({offset_str})"
+
+            results.append((tz_name, label))
+
+        except Exception:
+            # 一部のTimeZoneで失敗することがあるので無視
+            continue
+
+    return results
