@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Literal, Protocol, TypeAlias, Union, runtime_checkable
+
 from zoneinfo import ZoneInfo, available_timezones
 
 from logs.logger_config import LoggerConfig
@@ -18,27 +19,38 @@ from logs.logger_config import LoggerConfig
 
 @runtime_checkable
 class LoggerLike(Protocol):
-    """Loggerのインターフェース定義（完全版）"""
+    """Loggerのインターフェース定義（完全版）
+    💥 Protocolは「実装」ではなく「型の約束」です
+    🚀【実際の動き】
+    コード👇
+    def func(logger: LoggerLike):
+        logger.info("test", context={"a": 1})
+    👉 呼び出し👇
+    logger = get_logger()  # ← AppLogger
+    func(logger)
+    👉 実際に動くのは👇
+    AppLogger.info(...)
+    """
 
-    def debug(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def debug(self, message: str, **kw: Any) -> None:
         """デバッグレベルのログを出力する"""
-        pass
+        ...
 
-    def info(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def info(self, message: str, **kw: Any) -> None:
         """情報レベルのログを出力する"""
-        pass
+        ...
 
-    def warning(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def warning(self, message: str, **kw: Any) -> None:
         """警告レベルのログを出力する"""
-        pass
+        ...
 
-    def error(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def error(self, message: str, **kw: Any) -> None:
         """エラーレベルのログを出力する"""
-        pass
+        ...
 
-    def critical(self, message: str, context: dict[str, Any] | None = None) -> None:
+    def critical(self, message: str, **kw: Any) -> None:
         """緊急レベルのログを出力する"""
-        pass
+        ...
 
 # =========================
 # 型定義
@@ -162,7 +174,7 @@ def to_utc_datetime(
     return None
 
 
-def to_utc_datetime_from_local_dt(
+def to_utc_datetime_from_world_local_dt(
     value: DateLike = None,
     tz: str | ZoneInfo = "Asia/Tokyo",
     *,
@@ -284,7 +296,7 @@ def to_jst_str(value: DateLike) -> str | None:
 # ========================
 # Local_Time changer
 # ========================
-def to_local_datetime(
+def to_world_local_datetime(
     value: DateLike,
     tz: str | ZoneInfo = "Asia/Tokyo",
     *,
@@ -309,7 +321,7 @@ def to_local_datetime(
         return None
 
 
-def to_local_str(
+def to_world_local_str(
     value: DateLike,
     tz: str | ZoneInfo = "Asia/Tokyo",
     *,
@@ -317,7 +329,7 @@ def to_local_str(
 ) -> str:
     """任意タイムゾーンstrへ変換（最終出口）"""
 
-    dt: datetime | None = to_local_datetime(value, tz, logger=logger)
+    dt: datetime | None = to_world_local_datetime(value, tz, logger=logger)
     if dt is None:
         return ""
 

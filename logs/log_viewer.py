@@ -17,9 +17,9 @@ import tkinter as tk
 from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, ttk
-from typing import Any, Final, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Final, Union
 
-from zoneinfo import ZoneInfo
+
 
 from logs.display_formatter import LogRenderer
 from logs.log_app import get_logger
@@ -29,10 +29,11 @@ from logs.log_storage import load_log
 from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.time_utils import (
-    to_jst_datetime,
-    to_utc_datetime,
     list_timezones_formatted,
-    to_local_datetime,
+    to_world_local_datetime,
+    to_world_local_str,
+    to_utc_datetime,
+    now_utc,
 )
 
 if TYPE_CHECKING:
@@ -125,7 +126,7 @@ class LogViewer:
         # 🔥 Eventベースに変更
         self.rows: list[Event] = []
         self._single_click_after_id: str | None = None
-        self.base_utc_dt: datetime = datetime.now(timezone.utc) # UTCで運用
+        self.base_utc_dt: datetime = now_utc() # UTCで運用
         # 仕様別フィルタ
         self.trace_var = tk.StringVar(value=self.TRACE_ALL)
         self.type_var = tk.StringVar(value=self.TYPE_ALL)
@@ -139,27 +140,22 @@ class LogViewer:
         self.type_dropdown: ttk.Combobox
         self.tree: ttk.Treeview
         self.search_var = tk.StringVar()
-        # ===== UI変数 =====
-        self.tz_var = tk.StringVar()
 
-        self.logger: "AppLogger" = get_logger()
-        # TimeZoneのリスト取得準備
+        # ===== TimeZoneデータ =====
         self.tz_list: list[tuple[str, str]] = list_timezones_formatted()
         self.tz_map: dict[str, str] = {label: tz for tz, label in self.tz_list}
+        self.current_tz = "Asia/Tokyo"
+        # ===== tz_UI変数 =====
+        self.tz_var = tk.StringVar()
+
         # 画像描画
         self._build_ui()
-        # ===== UI構築 =====
+        # ===== tz_UI構築 =====
         self._build_timezone_dropdown()
 
         if initial_log_path is not None:
             self.reload_log(initial_log_path)
 
-    # ======================
-    # TimeZone_list 取得
-    # ======================
-    def get_tz_list(self) -> list[tuple[str, str]]:
-        """timezoneのlist取得"""
-        return self.tz_list
     # =======================
     # TZ DropDown List
     # =======================
@@ -173,11 +169,11 @@ class LogViewer:
         tk.Label(frame, text="TimeZone:").pack(side=tk.LEFT)
 
         # 表示用リスト
-        tz_labels = [label for _, label in self.tz_list]
+        tz_labels: list[str] = [label for _, label in self.tz_map]
 
         # 初期値（Tokyo）
-        default_label = next(
-            (label for tz, label in self.tz_list if tz == "Asia/Tokyo"),
+        default_label: str = next(
+            (label for tz, label in self.tz_map if tz == "Asia/Tokyo"),
             tz_labels[0],
         )
         self.tz_var.set(default_label)
@@ -201,7 +197,8 @@ class LogViewer:
         selected_label: str = self.tz_var.get()
         tz_name: str | None = self.tz_map.get(selected_label)
 
-        print(f"選択されたTimeZone: {tz_name}")
+        if tz_name:
+            self.current_tz: str = tz_name
 
         # 👉 ここで再描画（重要）
         self.apply_filter()
@@ -230,7 +227,7 @@ class LogViewer:
 
     def format_time(self, dt: datetime) -> str:
         """表示フォーマット修正"""
-        logger: AppLogger = get_logger()
+        logger: "AppLogger" = get_logger()
 
         if logger.config.time_precision == "second":
             return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -519,11 +516,11 @@ class LogViewer:
 
     def apply_filter(self, _event: tk.Event | None = None) -> None:
         """フィルタに応じて表示内容を更新する"""
-
+        # logger:"AppLogger" = get_logger()
         trace_filter: str = self.trace_var.get()
         type_filter: str = self.type_var.get()
         search_text: str = self.search_var.get().strip().lower()
-
+        tz:str = self.current_tz
         # 🔹 画面クリア
         for item_id in self.tree.get_children():
             self.tree.delete(item_id)
@@ -540,7 +537,7 @@ class LogViewer:
 
         if self.rows:
             base: datetime | None = to_utc_datetime(self.rows[0].time)
-            self.base_utc_dt = base if base else datetime.now(timezone.utc)
+            self.base_utc_dt = base if base else now_utc()
 
         if start_utc_dt and end_utc_dt and start_utc_dt.year == 1900:
             start_utc_dt = datetime.combine(self.base_utc_dt.date(), start_utc_dt.time())
@@ -560,7 +557,7 @@ class LogViewer:
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
 
-            # 🔹 時刻（内部変換でUTC基準に統一、表示はJST）
+            # 🔹 時刻（内部変換でUTC基準に統一、表示はlocal）
             row_dt: datetime | None = self.parse_flexible_datetime(row.time)
 
             # 🔹 -----範囲検索-----
@@ -575,13 +572,15 @@ class LogViewer:
                 message: str = self._get_message(row).lower()
                 trace_id: str = row_trace_id.lower()
                 utc_time: str = str(row.time).lower()
-                jst_time: str = self._format_local_time(row.time).lower()
+                # jst_time: str = self._format_local_time(row.time).lower()
+                world_local_time: str = to_world_local_str(row.time, tz)
 
                 if (
                     search_text not in message
                     and search_text not in trace_id
                     and search_text not in utc_time
-                    and search_text not in jst_time
+                    # and search_text not in jst_time
+                    and search_text not in world_local_time
                 ):
                     continue
 
@@ -592,18 +591,18 @@ class LogViewer:
                 iid=str(index),
                 values=(
                     row_type,
-                    self._format_local_time(row.time),
+                    self._format_world_local_time(row.time),
                     row_trace_id,
                     self._get_message(row),
                 ),
                 tags=(row_type,),
             )
 
-    def _format_local_time(self, value: Any) -> str:
-        """UTCをJST表示文字列へ変換する"""
-        dt: datetime | None = to_jst_datetime(value)
+    def _format_world_local_time(self, value: Any) -> str:
+        """UTCをworld_local時間文字列へ変換する"""
+        dt: datetime | None = to_world_local_datetime(value, self.current_tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt is not None else str(value)
-
+    
     def _get_type(self, row: Event) -> str:
         """type文字列を安全に返す"""
         if row.type is not None:
@@ -727,7 +726,7 @@ class LogViewer:
         # =========================
         # 🔹 上部（色付き表示）
         # =========================
-        parts: list[tuple[str, str]] = renderer.build_summary_parts(row)
+        parts: list[tuple[str, str]] = renderer.build_summary(row: Event, self.current_tz: str)
 
         for text, color in parts:
             if not text:

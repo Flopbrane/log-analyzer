@@ -13,9 +13,14 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from logs.log_types import Event, LogDict, LogWhere
-from logs.time_utils import to_jst_datetime
+from zoneinfo import ZoneInfo
 
+from logs.log_types import Event, LogDict, LogWhere
+from logs.time_utils import (
+    to_jst_datetime,
+    to_world_local_datetime,
+    )
+    
 
 class LogRenderer:
     """ログ表示専用クラス（整形エンジン🔥）"""
@@ -90,12 +95,30 @@ class LogRenderer:
     # =========================
     # 🔹 時刻整形(Timezone対応)
     # =========================
-    def format_time_to_local_dt(self, value: Any, tz: str) -> str:
-        """時刻整形"""
-        dt: datetime | None = to_jst_datetime(value)
-        if dt and 2000 <= dt.year <= 2100:
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
-        return str(value)
+    def format_time_full(self, value: Any, tz: str | ZoneInfo) -> tuple[str, str]:
+        """Local + UTC の完全フォーマット"""
+
+        dt_local: datetime | None = to_world_local_datetime(value, tz)
+        if dt_local is None:
+            return ("", "")
+
+        # Local
+        local_str: str = dt_local.strftime("%Y-%m-%d %H:%M:%S")
+
+        # UTC
+        dt_utc: datetime = dt_local.astimezone(timezone.utc)
+        utc_str: str = dt_utc.strftime("%Y-%m-%d %H:%M:%S")
+
+        # TZ情報
+        tz_name: str = tz if isinstance(tz, str) else str(tz)
+        tz_abbr: str = dt_local.tzname() or ""
+
+        label: str = f"{tz_name} | {tz_abbr}" if tz_abbr else tz_name
+
+        return (
+            f"Time(Local:{label}) : {local_str}",
+            f"Time(UTC)          : {utc_str}",
+        )
 
     # =========================
     # 🔹 Context整形
@@ -121,7 +144,7 @@ class LogRenderer:
     # ==========================
     # 🔹 詳細表示整形
     # ==========================
-    def build_summary_parts(self, row: Event) -> list[tuple[str, str]]:
+    def build_summary_parts(self, row: Event, tz: str) -> list[tuple[str, str]]:
         """
         戻り値：[(テキスト, 色), ...]
         """
@@ -131,12 +154,16 @@ class LogRenderer:
         color: str = self.get_level_color(level)
 
         where: LogWhere = raw.get("where", {})
-
+        
+        time_utc_line: str
+        time_local_line: str
+        time_local_line, time_utc_line = self.format_time_full(row.time, tz)
+        
         parts: list[tuple[str, str]] = [
             (f"Type  : {row.type.name if row.type else '-'}", color),
             (f"Level : {level}", color),
-            (f"Time(JST) : {self.format_time(row.time)}", "#000000"),
-            (f"Time(UTC) : {row.time}", "#888888"),
+            (time_local_line, "#000000"),
+            (time_utc_line, "#888888"),
             ("", ""),
         ]
 
@@ -152,6 +179,7 @@ class LogRenderer:
 
         # 🔹 where情報（これ重要🔥）
         parts += [
+            ("--- where ---", "#bb00cc"),
             (f"File : {where.get('file','')}", "#444444"),
             (f"Line : {where.get('line','')}", "#444444"),
             (f"Func : {where.get('function','')}", "#444444"),
@@ -177,49 +205,9 @@ class LogRenderer:
     # =========================
     # 🔹 Summary生成🔥
     # =========================
-    def build_summary(self, row: Event) -> str:
-        """サマリー整形"""
-        raw: LogDict = row.raw
-
-        event_type:  str = row.type.name if row.type else "-"
-        level: str = row.level.name
-
-        time_str: str = self.format_time(row.time)
-        utc_time = str(row.time)
-
-        where: LogWhere = raw.get("where", {})
-        file_path = str(where.get("file", ""))
-        line_no = str(where.get("line", ""))
-        func = str(where.get("function", ""))
-
-        message = str(raw.get("what", {}).get("message", ""))
-        message: str = self.format_message(message)
-
-        context_text: str = self.build_context(raw.get("context", {}))
-        event_text: str = self.build_event(row.data)
-
-        lines: list[str] = [
-            f"Type  : {event_type}",
-            f"Level : {level}",
-            f"Time(JST) : {time_str}",
-            f"Time(UTC) : {utc_time}",
-            "",
-            "=== MESSAGE ===",
-            message,
-            "",
-            f"File : {file_path}",
-            f"Line : {line_no}",
-            f"Func : {func}",
-            "",
-        ]
-
-        if event_text:
-            lines += ["--- Event ---", event_text, ""]
-
-        if context_text:
-            lines += ["--- Context ---", context_text]
-
-        return "\n".join(lines)
+    def build_summary(self, row: Event, tz: str) -> str:
+        parts: list[tuple[str, str]] = self.build_summary_parts(row, tz)
+        return "\n".join(text for text, _ in parts)
 
     # =========================
     # 🔹 RAW生成
