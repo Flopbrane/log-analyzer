@@ -17,7 +17,6 @@ from zoneinfo import ZoneInfo
 
 from logs.log_types import Event, LogDict, LogWhere
 from logs.time_utils import (
-    to_jst_datetime,
     to_world_local_datetime,
     )
     
@@ -83,16 +82,6 @@ class LogRenderer:
             return f"{prefix.strip()}\n→ {pretty}"
 
     # =========================
-    # 🔹 時刻整形
-    # =========================
-    def format_time(self, value: Any) -> str:
-        """時刻整形"""
-        dt: datetime | None = to_jst_datetime(value)
-        if dt and 2000 <= dt.year <= 2100:
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
-        return str(value)
-
-    # =========================
     # 🔹 時刻整形(Timezone対応)
     # =========================
     def format_time_full(self, value: Any, tz: str | ZoneInfo) -> tuple[str, str]:
@@ -110,7 +99,7 @@ class LogRenderer:
         utc_str: str = dt_utc.strftime("%Y-%m-%d %H:%M:%S")
 
         # TZ情報
-        tz_name: str = tz if isinstance(tz, str) else str(tz)
+        tz_name: str = tz if isinstance(tz, str) else tz.key
         tz_abbr: str = dt_local.tzname() or ""
 
         label: str = f"{tz_name} | {tz_abbr}" if tz_abbr else tz_name
@@ -123,12 +112,16 @@ class LogRenderer:
     # =========================
     # 🔹 Context整形
     # =========================
-    def build_context(self, context: dict[str, Any]) -> str:
+    def build_context(self, context: dict[str, Any], tz: str) -> str:
         """context整形"""
         lines: list[str] = []
+
         for k, v in context.items():
-            v: str = self.format_time(v)
-            lines.append(f"{self.indent}{k:<{self.key_width}} : {v}")
+            dt: datetime | None = to_world_local_datetime(v, tz)
+            v_str: str = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else str(v)
+
+            lines.append(f"{self.indent}{k:<{self.key_width}} : {v_str}")
+
         return "\n".join(lines)
 
     # =========================
@@ -198,8 +191,9 @@ class LogRenderer:
         if context:
             parts.append(("--- Context ---", "#0066cc"))
             for k, v in context.items():
-                v: str = self.format_time(v)
-                parts.append((f"{self.indent}{k:<{self.key_width}} : {v}", "#000000"))
+                dt: datetime | None = to_world_local_datetime(v, tz)
+                v_str: str = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else str(v)
+                parts.append((f"{self.indent}{k:<{self.key_width}} : {v_str}", "#000000"))
 
         return parts
     # =========================

@@ -17,12 +17,9 @@ import tkinter as tk
 from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, ttk
-from typing import TYPE_CHECKING, Any, Final, Union
-
-
+from typing import Any, Final, Union
 
 from logs.display_formatter import LogRenderer
-from logs.log_app import get_logger
 from logs.log_paths import LOGS_DIR
 from logs.log_searcher import collect_logs, summarize
 from logs.log_storage import load_log
@@ -30,15 +27,11 @@ from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.time_utils import (
     list_timezones_formatted,
+    now_utc,
+    to_utc_datetime,
     to_world_local_datetime,
     to_world_local_str,
-    to_utc_datetime,
-    now_utc,
 )
-
-if TYPE_CHECKING:
-    from logs.multi_info_logger import AppLogger
-
 
 ParentWidget = Union[tk.Tk, tk.Toplevel]
 
@@ -224,15 +217,6 @@ class LogViewer:
             return dt.replace(tzinfo=timezone.utc)
 
         return dt.astimezone(timezone.utc)
-
-    def format_time(self, dt: datetime) -> str:
-        """表示フォーマット修正"""
-        logger: "AppLogger" = get_logger()
-
-        if logger.config.time_precision == "second":
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-        return dt.strftime("%Y-%m-%d %H:%M:%S.%f")
 
     # =======================
     # UI構築(メイン・ウインド)
@@ -726,7 +710,7 @@ class LogViewer:
         # =========================
         # 🔹 上部（色付き表示）
         # =========================
-        parts: list[tuple[str, str]] = renderer.build_summary(row: Event, self.current_tz: str)
+        parts: list[tuple[str, str]] = renderer.build_summary_parts(row, self.current_tz)
 
         for text, color in parts:
             if not text:

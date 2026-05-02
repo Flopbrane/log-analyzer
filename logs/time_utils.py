@@ -277,20 +277,20 @@ def to_utc_iso(value: DateLike) -> str | None:
 # =========================
 # JST変換
 # =========================
-def to_jst_datetime(value: DateLike) -> datetime | None:
-    """値をJSTのdatetimeに変換する（表示専用）"""
-    dt: datetime | None = to_utc_datetime(value)
-    if dt is None:
-        return None
-    return dt.astimezone(JST)
+# def to_jst_datetime(value: DateLike) -> datetime | None:
+#     """値をJSTのdatetimeに変換する（表示専用）"""
+#     dt: datetime | None = to_utc_datetime(value)
+#     if dt is None:
+#         return None
+#     return dt.astimezone(JST)
 
 
-def to_jst_str(value: DateLike) -> str | None:
-    """値をJSTの文字列に変換する(表示用)"""
-    dt: datetime | None = to_utc_datetime(value)
-    if dt is None:
-        return ""
-    return dt.astimezone(JST).isoformat(timespec="seconds")
+# def to_jst_str(value: DateLike) -> str | None:
+#     """値をJSTの文字列に変換する(表示用)"""
+#     dt: datetime | None = to_utc_datetime(value)
+#     if dt is None:
+#         return ""
+#     return dt.astimezone(JST).isoformat(timespec="seconds")
 
 
 # ========================
