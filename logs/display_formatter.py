@@ -10,16 +10,19 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
-from typing import Any
+from datetime import date, datetime, timezone
+from typing import Any, cast
 
 from zoneinfo import ZoneInfo
 
 from logs.log_types import Event, LogDict, LogWhere
 from logs.time_utils import (
     to_world_local_datetime,
-    )
-    
+)
+from logs.context_types import ContextType, ContextValue
+from logs.context_builder import detect_type, wrap_value, ctx
+
+
 
 class LogRenderer:
     """ログ表示専用クラス（整形エンジン🔥）"""
@@ -112,17 +115,96 @@ class LogRenderer:
     # =========================
     # 🔹 Context整形
     # =========================
-    def build_context(self, context: dict[str, Any], tz: str) -> str:
-        """context整形"""
+    def build_context_lines(
+        self,
+        context: dict[str, Any],
+        tz: str,
+        level: int = 0,
+    ) -> list[str]:
+        """context整形（ネスト対応・再帰・型安全🔥）"""
+
         lines: list[str] = []
+        indent: str = self.indent * (level + 1)
 
         for k, v in context.items():
-            dt: datetime | None = to_world_local_datetime(v, tz)
-            v_str: str = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else str(v)
+            key_str: str = f"{indent}{k:<{self.key_width}} : "
 
-            lines.append(f"{self.indent}{k:<{self.key_width}} : {v_str}")
+            # =========================
+            # 🟢 型付きデータ
+            # =========================
+            if isinstance(v, dict) and "type" in v and "value" in v:
+                v_typed: ContextValue = cast(ContextValue, v)
 
-        return "\n".join(lines)
+                v_type: ContextType | str = v_typed["type"]
+                v_value: Any = v_typed["value"]
+
+                # 🔹 datetime
+                if v_type == ContextType.DATETIME:
+                    dt: datetime | None = to_world_local_datetime(v_value, tz)
+                    v_str: str = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else str(v_value)
+                    lines.append(f"{key_str}{v_str}")
+                    continue
+
+                # 🔹 dict（ネスト）
+                if isinstance(v_value, dict):
+                    v_dict: dict[str, Any] = cast(dict[str, Any], v_value)
+
+                    lines.append(f"{key_str}{{")
+                    lines.extend(self.build_context_lines(v_dict, tz, level + 1))
+                    lines.append(f"{indent}}}")
+                    continue
+
+                # 🔹 list（ネスト）
+                if isinstance(v_value, list):
+                    v_list: list[Any] = cast(list[Any], v_value)
+
+                    lines.append(f"{key_str}[")
+                    for i, item in enumerate(v_list):
+                        item_key: str = f"{indent}{self.indent}[{i}]".ljust(self.key_width + len(indent) + 3)
+
+                        # dict inside list
+                        if isinstance(item, dict):
+                            item_dict: dict[str, Any] = cast(dict[str, Any], item)
+
+                            lines.append(f"{item_key}{{")
+                            lines.extend(self.build_context_lines(item_dict, tz, level + 2))
+                            lines.append(f"{indent}{self.indent}}}")
+                        else:
+                            lines.append(f"{item_key} : {item}")
+
+                    lines.append(f"{indent}]")
+                    continue
+
+                # 🔹 その他
+                lines.append(f"{key_str}{v_value}")
+                continue
+
+            # =========================
+            # 🟡 旧形式（安全）
+            # =========================
+            if isinstance(v, dict):
+                v_dict: dict[str, Any] = cast(dict[str, Any], v)
+
+                lines.append(f"{key_str}{{")
+                lines.extend(self.build_context_lines(v_dict, tz, level + 1))
+                lines.append(f"{indent}}}")
+                continue
+
+            if isinstance(v, list):
+                v_list: list[Any] = cast(list[Any], v)
+
+                lines.append(f"{key_str}[")
+                for i, item in enumerate(v_list):
+                    lines.append(f"{indent}{self.indent}[{i}] : {item}")
+                lines.append(f"{indent}]")
+                continue
+
+            # =========================
+            # 🔹 普通の値
+            # =========================
+            lines.append(f"{key_str}{v}")
+
+        return lines
 
     # =========================
     # 🔹 Event整形
@@ -163,7 +245,6 @@ class LogRenderer:
         # 🔹 message
         msg = str(raw.get("what", {}).get("message", ""))
         msg: str = self.format_message(msg)
-        # print("DEBUG:", row.raw)
         parts += [
             ("=== MESSAGE ===", "#0000aa"),
             (msg, "#000000"),
@@ -187,13 +268,15 @@ class LogRenderer:
             parts.append(("", ""))
 
         # 🔹 Context
-        context: dict[str, Any] = raw.get("context", {})
+        context: dict[str, ContextValue | Any] = raw.get("context", {})
+
         if context:
-            parts.append(("--- Context ---", "#0066cc"))
-            for k, v in context.items():
-                dt: datetime | None = to_world_local_datetime(v, tz)
-                v_str: str = dt.strftime("%Y-%m-%d %H:%M:%S") if dt else str(v)
-                parts.append((f"{self.indent}{k:<{self.key_width}} : {v_str}", "#000000"))
+            parts.append(("--- Context ---", "#1b03a3"))
+
+            lines: list[str] = self.build_context_lines(context, tz)
+
+            for line in lines:
+                parts.append((line, "#000000"))
 
         return parts
     # =========================

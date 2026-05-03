@@ -135,16 +135,18 @@ class LogViewer:
         self.search_var = tk.StringVar()
 
         # ===== TimeZoneデータ =====
+        # tz_list → (tz, label) ← データ構造,表示 → tz_list
+        # tz_map  → label → tz ← 逆引き用,検索 → tz_map
         self.tz_list: list[tuple[str, str]] = list_timezones_formatted()
         self.tz_map: dict[str, str] = {label: tz for tz, label in self.tz_list}
         self.current_tz = "Asia/Tokyo"
         # ===== tz_UI変数 =====
         self.tz_var = tk.StringVar()
-
-        # 画像描画
-        self._build_ui()
         # ===== tz_UI構築 =====
-        self._build_timezone_dropdown()
+        self._build_timezone_dropdown(self.root)
+        # ===== 全体UI構築 =====
+        self._build_ui()
+
 
         if initial_log_path is not None:
             self.reload_log(initial_log_path)
@@ -152,21 +154,21 @@ class LogViewer:
     # =======================
     # TZ DropDown List
     # =======================
-    def _build_timezone_dropdown(self) -> None:
+    def _build_timezone_dropdown(self, parent_frame: ParentWidget) -> None:
         """TimeZoneドロップダウン作成"""
 
-        frame = tk.Frame(self.root)
+        frame = tk.Frame(parent_frame)
         frame.pack(pady=5)
 
         # ラベル
         tk.Label(frame, text="TimeZone:").pack(side=tk.LEFT)
 
         # 表示用リスト
-        tz_labels: list[str] = [label for _, label in self.tz_map]
+        tz_labels: list[str] = [label for _, label in self.tz_list]
 
         # 初期値（Tokyo）
         default_label: str = next(
-            (label for tz, label in self.tz_map if tz == "Asia/Tokyo"),
+            (label for tz, label in self.tz_list if tz == "Asia/Tokyo"),
             tz_labels[0],
         )
         self.tz_var.set(default_label)
