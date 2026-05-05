@@ -56,6 +56,7 @@ from pathlib import Path
 from types import CodeType, FrameType
 from typing import Any, Iterable, cast
 
+from logs.context_builder import ctx
 from logs.log_paths import LOGS_DIR  # ← ここ重要
 from logs.log_types import ISODateTimeStr, LogLevel, LogOutput, LogWhat, LogWhere, RawLogRecord  # ← ここ重要
 from logs.logger_config import LoggerConfig
@@ -236,7 +237,31 @@ class AppLogger:
         # -----------------------------
         # context
         # -----------------------------
-        resolved_context: dict[str, Any] = dict(context or {})
+        """contextをctx()で正規化する（内部使用）"""
+        resolved_context: dict[str, Any]
+
+        if context is None:
+            resolved_context = {}
+
+        else:
+            try:
+                # 🔹 型付きかチェック
+                is_typed: bool = all(
+                    isinstance(v, dict) and "type" in v and "value" in v
+                    for v in context.values()
+                )
+
+                if is_typed:
+                    resolved_context = dict(context)
+                else:
+                    # 🔥 ここが本命（自動変換）
+                    resolved_context = ctx(**context)
+
+            except Exception:
+                # 💥 万が一の保険（絶対落とさない）
+                resolved_context = dict(context)
+
+        # 🔹 alarm_id は後から追加
         if alarm_id is not None:
             resolved_context.setdefault("alarm_id", alarm_id)
 

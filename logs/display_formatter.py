@@ -10,18 +10,16 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from zoneinfo import ZoneInfo
 
+from logs.context_types import ContextType, ContextValue
 from logs.log_types import Event, LogDict, LogWhere
 from logs.time_utils import (
     to_world_local_datetime,
 )
-from logs.context_types import ContextType, ContextValue
-from logs.context_builder import detect_type, wrap_value, ctx
-
 
 
 class LogRenderer:

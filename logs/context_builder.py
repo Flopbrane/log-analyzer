@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-
+"""contextの情報を構築するヘルパー関数群"""
 #########################
 # Author: F.Kurokawa
 # Description:
 #
 #########################
 
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Any
 
-from logs.context_types import ContextType, CUSTOM_TYPES
+from logs.context_types import CUSTOM_TYPES, ContextType
 
 
 def detect_type(value: Any) -> ContextType:

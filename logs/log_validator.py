@@ -23,30 +23,37 @@ def validate_log(
     """Unsafe → Safe変換"""
 
     # time
-    if not isinstance(raw.get("time"), str):
+    if not isinstance(raw.get("time"), str):  # type: ignore[reportUnnecessaryIsInstance]
         logger.warning(f"invalid log: missing time → {raw}")
         return None
 
     # trace_id
-    if not isinstance(raw.get("trace_id"), str):
+    if not isinstance(raw.get("trace_id"), str):  # type: ignore[reportUnnecessaryIsInstance]
         logger.warning(f"invalid log: missing trace_id → {raw}")
         return None
 
     # level
-    if not isinstance(raw.get("level"), str):
+    if not isinstance(raw.get("level"), str):  # type: ignore[reportUnnecessaryIsInstance]
         logger.warning(f"invalid log: missing level → {raw}")
         return None
 
     # what
-    raw_what:LogWhat | None = raw.get("what")
+    raw_what: Any | None = raw.get("what")
+
     if not isinstance(raw_what, dict):
         logger.warning(f"invalid log: missing what → {raw}")
         return None
 
-    message: str | None = raw_what.get("message")
-    if not isinstance(message, str):
+    # 👇 ここが最重要🔥
+    raw_what_dict: dict[str, Any] = cast(dict[str, Any], raw_what)
+
+    message_raw: Any | None = raw_what_dict.get("message")
+
+    if not isinstance(message_raw, str):  # type: ignore[reportUnnecessaryIsInstance]
         logger.warning(f"invalid log: missing message → {raw}")
         return None
+
+    message: str = message_raw
 
     what: LogWhat = {"message": message}
 
