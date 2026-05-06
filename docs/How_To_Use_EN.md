@@ -113,6 +113,109 @@ python -m logs.log_viewer
 
 Click a row → View detailed JSON
 
+#### 🔍 Search Text Box
+
+The Viewer search text box supports simple keyword search, field-specific search, and date/time range search.
+
+##### ✅ Basic Search
+
+Type any keyword to search across visible log fields such as `message`, `level`, `trace_id`, `where`, and `context`.
+
+```text
+test_error
+system_cpu_percent
+run_test
+```
+
+##### ✅ Date Search
+
+Search logs by date.
+
+```text
+2026-04-23
+```
+
+This matches logs displayed on that date in the Viewer timezone.
+
+##### ✅ Time Search
+
+Search logs by hour and minute.
+
+```text
+10:15
+10:16
+```
+
+##### ✅ Date + Time Search
+
+Search logs that match a specific date/time prefix.
+
+```text
+2026-04-24 10:16
+```
+
+##### ✅ Date / Time Range Search
+
+Use `..` as the standard range separator.
+
+```text
+2026-04-23..2026-04-24
+2026-04-23 14:49..2026-04-23 14:49
+2026-04-23 15:00:31..2026-04-23 15:00:37
+```
+
+The Viewer also supports the older compatible format using ` - ` with spaces.
+
+```text
+2026-04-23 - 2026-04-24
+```
+
+> Recommended format: `start..end`  
+> Compatible format: `start - end`
+
+##### ✅ Field-Specific Search
+
+You can search by specific log fields using `key:value`.
+
+```text
+level:ERROR
+level:WARNING
+message:test_error
+message:system_cpu_percent
+function:run_test
+file:system_monitor.py
+context:cpu_percent
+context:gpu_mem_total_mb
+trace_id:fc036f388b7542c48117d55c8ec1728c
+```
+
+##### ✅ Search Examples
+
+| Query | Meaning |
+| ----- | ------- |
+| `2026-04-23` | Logs on 2026-04-23 |
+| `2026-04-23..2026-04-24` | Logs from 2026-04-23 to 2026-04-24 |
+| `2026-04-23 15:00:31..2026-04-23 15:00:37` | Logs within a precise time range |
+| `10:15` | Logs whose displayed local time starts with 10:15 |
+| `level:ERROR` | Error logs only |
+| `message:test_error` | Logs whose message contains `test_error` |
+| `context:cpu_percent` | Logs that contain `cpu_percent` in context |
+| `trace_id:...` | Logs for a specific session |
+
+##### ⚠️ Range Separator Notes
+
+Because dates already contain hyphens, avoid using a plain `-` without spaces.
+
+```text
+2026-04-23-2026-04-24  # Not recommended
+```
+
+Use this instead:
+
+```text
+2026-04-23..2026-04-24
+```
+
 #### ⚠️ Important Notes
 
 ❌ Do NOT instantiate logger directly  

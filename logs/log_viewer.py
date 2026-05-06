@@ -14,10 +14,12 @@ import json
 import re
 import subprocess
 import tkinter as tk
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from tkinter import filedialog, ttk
-from typing import Any, Final, Union
+from typing import Any, Final, Literal, Union
+
+from zoneinfo import ZoneInfo
 
 from logs.display_formatter import LogRenderer
 from logs.log_paths import LOGS_DIR
@@ -449,55 +451,118 @@ class LogViewer:
         self.type_var.set(self.TYPE_ALL)
         self.apply_filter()
 
-    def parse_flexible_datetime(self, text: str) -> datetime | None:
-        """検索テキストに柔軟性をもたせる"""
-        text = text.strip()
 
-        if not text:
+    def parse_datetime(self, value: str, tz: str) -> datetime | None:
+        """文字列 → datetime（UTC or Local対応）"""
+        value = value.strip()
+
+        if not value:
             return None
 
-        # 🔹 ISO形式（最優先）
+        # 🔴 UTC（Z）
+        if value.endswith("Z"):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+
+        # 🔵 offset付き
+        if "+" in value or "-" in value[10:]:
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                return None
+
+        # 🟢 ISO（ローカル）
         try:
-            return datetime.fromisoformat(text)
+            dt: datetime = datetime.fromisoformat(value)
+            return dt.replace(tzinfo=self.get_local_tz(tz))
         except ValueError:
             pass
 
-        # 🔹 YYYYMMDD
-        if re.fullmatch(r"\d{8}", text):
+        # 🟡 YYYYMMDD
+        if re.fullmatch(r"\d{8}", value):
             try:
-                return datetime.strptime(text, "%Y%m%d")
+                dt: datetime = datetime.strptime(value, "%Y%m%d")
+                return dt.replace(tzinfo=self.get_local_tz(tz))
             except ValueError:
                 return None
 
-        # 🔹 HH:MM
-        if re.fullmatch(r"\d{1,2}:\d{1,2}", text):
+        # 🟡 HH:MM
+        if re.fullmatch(r"\d{1,2}:\d{1,2}", value):
             try:
-                return datetime.strptime(text, "%H:%M")
+                dt: datetime = datetime.strptime(value, "%H:%M")
+                return dt.replace(tzinfo=self.get_local_tz(tz))
             except ValueError:
                 return None
 
-        # 🔹 HHMM（例：930 → 09:30）
-        if re.fullmatch(r"\d{3,4}", text):
+        # 🟡 HHMM
+        if re.fullmatch(r"\d{3,4}", value):
             try:
-                return datetime.strptime(text.zfill(4), "%H%M")
+                dt: datetime = datetime.strptime(value.zfill(4), "%H%M")
+                return dt.replace(tzinfo=self.get_local_tz(tz))
             except ValueError:
                 return None
 
-            return None
+        return None
+    
+    def get_local_tz(self, tz_name: str) -> tzinfo:
+        """ローカルタイムゾーンを取得する"""
+        try:
+            # Python 3.9+
+            return ZoneInfo(tz_name)
+        except Exception:
+            # Python 3.8以下の場合はUTCを返す（簡易対応）
+            return timezone.utc
 
-    def parse_range(self, text: str) -> tuple[None, None] | tuple[datetime | None, datetime | None]:
-        """日時範囲入力を分離して、UTC開始日時、UTC終了日時を返す"""
+    def parse_datetime_with_semantics(self, value: str) -> tuple[None, None] | tuple[Literal['date'], datetime] | tuple[Literal['datetime'], datetime]:
+        """日時文字列を解析し、date-onlyかdatetimeかを区別して返す「意味付け」"""
+        dt: datetime | None = self.parse_datetime(value, self.current_tz)
 
-        if " - " not in text:
+        if dt is None:
             return None, None
-        start_str: str
-        end_str: str
-        start_str, end_str = text.split(" - ")
 
-        start: datetime | None = self.parse_flexible_datetime(start_str)
-        start_utc: datetime | None = self.to_utc_search_dt(start)
-        end: datetime | None = self.parse_flexible_datetime(end_str)
-        end_utc: datetime | None = self.to_utc_search_dt(end)
+        if self.is_date_only(dt):
+            return ("date", dt)
+
+        return ("datetime", dt)
+
+
+    def is_date_only(self, dt: datetime) -> bool:
+        """日時が日付のみ（時間部分が00:00:00）か判定する"""
+        return dt.hour == 0 and dt.minute == 0 and dt.second == 0
+
+
+    def parse_range(self, text: str) -> tuple[datetime | None, datetime | None]:
+        """範囲検索文字列を解析し、UTC datetimeのタプルを返す"""
+        text = text.strip()
+        start_str: str = ""
+        end_str: str = ""
+        
+        if ".." in text:
+            start_str, end_str = text.split("..", 1)
+        elif " - " in text:
+            start_str, end_str = text.split(" - ", 1)
+        else:
+            return None, None
+
+        start_str = start_str.strip()
+        end_str = end_str.strip()
+
+        start: datetime | None = self.parse_datetime(start_str, self.current_tz) if start_str else None
+        end: datetime | None = self.parse_datetime(end_str, self.current_tz) if end_str else None
+
+        # 🔥 ここだけで意味を確定させる
+        if start is not None and self.is_date_only(start):
+            start = start.replace(hour=0, minute=0, second=0)
+
+        if end is not None and self.is_date_only(end):
+            end = end.replace(hour=23, minute=59, second=59)
+
+        # 🔥 UTC変換は最後に1回だけ
+        start_utc: datetime | None = self.to_utc_search_dt(start) if start else None
+        end_utc: datetime | None = self.to_utc_search_dt(end) if end else None
+
         return start_utc, end_utc
 
     def apply_filter(self, _event: tk.Event | None = None) -> None:
@@ -505,8 +570,15 @@ class LogViewer:
         # logger:"AppLogger" = get_logger()
         trace_filter: str = self.trace_var.get()
         type_filter: str = self.type_var.get()
-        search_text: str = self.search_var.get().strip().lower()
-        tz:str = self.current_tz
+        search_text: str = self.search_var.get().strip()
+        search_lower: str = search_text.lower()
+        tz: str = self.current_tz
+        # 🔥 日付単体検索
+        date_search: datetime | None = None
+
+        if search_text and ".." not in search_text and " - " not in search_text:
+            date_search = self.parse_datetime(search_text, self.current_tz)
+        
         # 🔹 画面クリア
         for item_id in self.tree.get_children():
             self.tree.delete(item_id)
@@ -515,7 +587,7 @@ class LogViewer:
         start_utc_dt: datetime | None = None
         end_utc_dt: datetime | None = None
 
-        if " - " in search_text:
+        if " - " in search_text or ".." in search_text:
             try:
                 start_utc_dt, end_utc_dt = self.parse_range(search_text)
             except Exception:
@@ -530,7 +602,9 @@ class LogViewer:
             end_utc_dt = datetime.combine(self.base_utc_dt.date(), end_utc_dt.time())
 
         # 🔹 メインループ
-        for index, row in enumerate(self.rows):
+        display_index = 0
+        
+        for row in self.rows:
 
             row_trace_id: str = self._get_trace_id(row)
             row_type: str = self._get_type(row)
@@ -544,29 +618,54 @@ class LogViewer:
                 continue
 
             # 🔹 時刻（内部変換でUTC基準に統一、表示はlocal）
-            row_dt: datetime | None = self.parse_flexible_datetime(row.time)
+            row_dt: datetime | None = self.parse_datetime(row.time, self.current_tz)
+            
+            if row_dt is None:
+                continue
+
+            row_utc: datetime | None = self.to_utc_search_dt(row_dt)
+            
+            # debag print
+            print(f"DEBUG row.time: {row.time}, parsed: {row_dt}, row_utc: {row_utc}")
+            print(f"DEBUG search_text: {search_text}, date_search: {date_search}, start_utc_dt: {start_utc_dt}, end_utc_dt: {end_utc_dt}")
+
+            # 🔥 日付単体検索（優先）
+            if date_search is not None:
+                search_utc: datetime | None = self.to_utc_search_dt(date_search)
+
+                if row_utc is None or search_utc is None:
+                    continue
+
+                # 日付だけ一致
+                if row_utc.date() != search_utc.date():
+                    continue
 
             # 🔹 -----範囲検索-----
-            # pylint: disable=C0325
-            if start_utc_dt and end_utc_dt:
-                if row_dt is None or not (start_utc_dt <= row_dt <= end_utc_dt):
+            elif start_utc_dt is not None or end_utc_dt is not None:
+                if row_utc is None:
                     continue
-            # pylint: enable=C0325
+
+                # 🔥 片側対応
+                if start_utc_dt is not None and row_utc < start_utc_dt:
+                    continue
+
+                if end_utc_dt is not None and row_utc > end_utc_dt:
+                    continue
 
             # 🔹 -----通常検索-----
-            elif search_text:
+            elif search_lower:
                 message: str = self._get_message(row).lower()
                 trace_id: str = row_trace_id.lower()
                 utc_time: str = str(row.time).lower()
                 # jst_time: str = self._format_local_time(row.time).lower()
-                world_local_time: str = to_world_local_str(row.time, tz)
+                world_local_time: str = to_world_local_str(row.time, tz).lower()
 
                 if (
-                    search_text not in message
-                    and search_text not in trace_id
-                    and search_text not in utc_time
-                    # and search_text not in jst_time
-                    and search_text not in world_local_time
+                    search_lower not in message
+                    and search_lower not in trace_id
+                    and search_lower not in utc_time
+                    # and search_lower not in jst_time
+                    and search_lower not in world_local_time
                 ):
                     continue
 
@@ -574,7 +673,7 @@ class LogViewer:
             self.tree.insert(
                 "",
                 "end",
-                iid=str(index),
+                # iid=str(display_index),
                 values=(
                     row_type,
                     self._format_world_local_time(row.time),
@@ -583,6 +682,8 @@ class LogViewer:
                 ),
                 tags=(row_type,),
             )
+            display_index += 1
+
 
     def _format_world_local_time(self, value: Any) -> str:
         """UTCをworld_local時間文字列へ変換する"""
