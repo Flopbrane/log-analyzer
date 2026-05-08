@@ -123,9 +123,15 @@ class LogViewer:
         self.root.geometry("1200x650+100+100")
         # 基本設定
         self.log_dir: Path = LOGS_DIR
-        # 🔥 Eventベースに変更
+        # ----元ログ (raw)----
+        self.raw_rows: list[LogDict] = []
+        # ----検索後ログ (filtered)----
+        self.filtered_rows: list[LogDict] = []
+        # ----表示用Event (rows)----
         self.rows: list[Event] = []
+        # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
+        # ------現在のUTC日時------
         self.base_utc_dt: datetime = now_utc() # UTCで運用
         # 仕様別フィルタ
         self.trace_var = tk.StringVar(value=self.TRACE_ALL)
@@ -637,6 +643,9 @@ class LogViewer:
         search_text: str = self.search_var.get().strip()
         search_lower: str = search_text.lower()
         tz: str = self.current_tz
+
+        self.filtered_rows = []
+
         # 🔥 日付単体検索
         date_search: datetime | None = None
 
@@ -668,7 +677,7 @@ class LogViewer:
         # 🔹 メインループ
         display_index = 0
         
-        for row in self.rows:
+        for row in self.raw_rows:
 
             row_trace_id: str = self._get_trace_id(row)
             row_type: str = self._get_type(row)
@@ -689,9 +698,9 @@ class LogViewer:
 
             row_utc: datetime | None = self.to_utc_search_dt(row_dt)
             
-            # debag print
-            print(f"DEBUG row.time: {row.time}, parsed: {row_dt}, row_utc: {row_utc}")
-            print(f"DEBUG search_text: {search_text}, date_search: {date_search}, start_utc_dt: {start_utc_dt}, end_utc_dt: {end_utc_dt}")
+            # # debag print
+            # print(f"DEBUG row.time: {row.time}, parsed: {row_dt}, row_utc: {row_utc}")
+            # print(f"DEBUG search_text: {search_text}, date_search: {date_search}, start_utc_dt: {start_utc_dt}, end_utc_dt: {end_utc_dt}")
 
             # 🔥 日付単体検索（優先）
             if date_search is not None:
@@ -734,10 +743,11 @@ class LogViewer:
                     continue
 
             # 🔹 表示
+            self.filtered_rows.append(row.raw)
             self.tree.insert(
                 "",
                 "end",
-                # iid=str(display_index),
+                iid=str(display_index),
                 values=(
                     row_type,
                     self._format_world_local_time(row.time),

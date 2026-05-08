@@ -94,7 +94,14 @@ def build_viewer_with_logs(paths: list[Path]) -> tuple[tk.Tk, LogViewer]:
         viewer.current_tz = "Asia/Tokyo"
 
     logs: list[LogDict] = collect_logs(paths)
-    viewer.rows = summarize(logs)
+
+    print(f"loaded logs: {len(logs)}")
+
+    # 🔥 summarizeしない
+    viewer.raw_rows = logs
+
+    viewer.rows = summarize(logs)  # ここは summarize を通す（Event化）
+
     viewer.update_filters()
     viewer.apply_filter()
     root.update_idletasks()
@@ -151,6 +158,8 @@ def main() -> int:
     root, viewer = build_viewer_with_logs(paths)
 
     print()
+    print(f"loaded raw logs: {len(viewer.raw_rows)}")
+    print(f"loaded filtered logs: {len(viewer.filtered_rows)}")
     print(f"loaded events: {len(viewer.rows)}")
     print(f"timezone: {viewer.current_tz}")
     print()
