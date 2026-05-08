@@ -17,7 +17,7 @@ import tkinter as tk
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from tkinter import filedialog, ttk
-from typing import Any, Final, Literal, Union
+from typing import Any, Final, Literal
 
 from zoneinfo import ZoneInfo
 
@@ -28,19 +28,24 @@ from logs.log_storage import load_log
 from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.time_utils import (
-    list_timezones_formatted,
     now_utc,
     to_utc_datetime,
     to_world_local_datetime,
     to_world_local_str,
 )
+from logs.tzinfo_formatter import (
+    TimeZoneData,
+    TimeZoneItem,
+    build_timezone_data,
+)
 
-ParentWidget = Union[tk.Tk, tk.Toplevel]
+WindowWidget = tk.Tk | tk.Toplevel
+ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
 
 class LogFileSelector:
     """ログファイル一覧を表示し、複数選択させるダイアログ"""
 
-    def __init__(self, parent: ParentWidget, log_dir: Path) -> None:
+    def __init__(self, parent: WindowWidget, log_dir: Path) -> None:
         self.parent = parent
         self.log_dir: Path = log_dir
 
@@ -49,7 +54,7 @@ class LogFileSelector:
         window = tk.Toplevel(self.parent)
         window.title("ログ選択")
         window.geometry("700x500")
-        window.transient(self.parent)
+        window.transient(self.parent) # window系のプロパティなので、Frameが入るとエラーになる
         window.grab_set()
 
         files: list[Path] = sorted(
@@ -137,15 +142,14 @@ class LogViewer:
         self.search_var = tk.StringVar()
 
         # ===== TimeZoneデータ =====
-        # tz_list → (tz, label) ← データ構造,表示 → tz_list
-        # tz_map  → label → tz ← 逆引き用,検索 → tz_map
-        self.tz_list: list[tuple[str, str]] = list_timezones_formatted()
-        self.tz_map: dict[str, str] = {label: tz for tz, label in self.tz_list}
-        self.current_tz = "Asia/Tokyo"
-        # ===== tz_UI変数 =====
+        self.tz_data: TimeZoneData = build_timezone_data()
+        self.current_tz: str = "Asia/Tokyo"
+        # area
+        self.area_var = tk.StringVar()
+        # city
         self.tz_var = tk.StringVar()
-        # ===== tz_UI構築 =====
-        self._build_timezone_dropdown(self.root)
+
+
         # ===== 全体UI構築 =====
         self._build_ui()
 
@@ -156,46 +160,105 @@ class LogViewer:
     # =======================
     # TZ DropDown List
     # =======================
-    def _build_timezone_dropdown(self, parent_frame: ParentWidget) -> None:
+    def _build_timezone_dropdown(
+        self,
+        parent_frame: ParentWidget,
+    ) -> None:
         """TimeZoneドロップダウン作成"""
 
         frame = tk.Frame(parent_frame)
         frame.pack(pady=5)
 
-        # ラベル
-        tk.Label(frame, text="TimeZone:").pack(side=tk.LEFT)
+        # ======================
+        # Area
+        # ======================
+        tk.Label(frame, text="Area:").pack(side=tk.LEFT)
 
-        # 表示用リスト
-        tz_labels: list[str] = [label for _, label in self.tz_list]
+        self.area_var.set("Asia")
 
-        # 初期値（Tokyo）
-        default_label: str = next(
-            (label for tz, label in self.tz_list if tz == "Asia/Tokyo"),
-            tz_labels[0],
+        self.area_combo = ttk.Combobox(
+            frame,
+            textvariable=self.area_var,
+            values=self.tz_data.area_list,
+            state="readonly",
+            width=15,
         )
-        self.tz_var.set(default_label)
 
-        # Combobox
-        self.tz_combo = ttk.Combobox(
+        self.area_combo.pack(side=tk.LEFT, padx=(4, 12))
+
+        # ======================
+        # City
+        # ======================
+        tk.Label(frame, text="City:").pack(side=tk.LEFT)
+
+        asia_items: list[TimeZoneItem] = self.tz_data.area_map["Asia"]
+
+        tz_labels: list[str] = [item.label for item in asia_items]
+
+        self.tz_var.set(
+            next(
+                (item.label for item in asia_items if item.zone == "Asia/Tokyo"),
+                tz_labels[0],
+            )
+        )
+
+        self.city_combo = ttk.Combobox(
             frame,
             textvariable=self.tz_var,
             values=tz_labels,
             state="readonly",
-            width=30,
+            width=35,
         )
-        self.tz_combo.pack(side=tk.LEFT)
 
-        # イベント
-        self.tz_combo.bind("<<ComboboxSelected>>", self._on_timezone_changed)
+        self.city_combo.pack(side=tk.LEFT, padx=(4, 12))
 
-    def _on_timezone_changed(self, _event: tk.Event) -> None:
+        # ======================
+        # Event
+        # ======================
+        self.area_combo.bind(
+            "<<ComboboxSelected>>",
+            self._on_area_changed,
+        )
+
+        self.city_combo.bind(
+            "<<ComboboxSelected>>",
+            self._on_timezone_changed,
+        )
+
+    def _on_area_changed(
+        self,
+        _event: tk.Event,
+    ) -> None:
+        """Area変更時"""
+        selected_area: str = self.area_var.get()
+        items: list[TimeZoneItem] = (
+            self.tz_data.area_map.get(
+                selected_area,
+                [],
+            )
+        )
+        labels: list[str] = [
+            item.label
+            for item in items
+        ]
+        self.city_combo["values"] = labels
+        if labels:
+            self.tz_var.set(labels[0])
+        self._on_timezone_changed(_event)
+
+    def _on_timezone_changed(
+        self,
+        _event: tk.Event,
+    ) -> None:
         """TimeZone変更時"""
 
         selected_label: str = self.tz_var.get()
-        tz_name: str | None = self.tz_map.get(selected_label)
 
-        if tz_name:
-            self.current_tz: str = tz_name
+        for items in self.tz_data.area_map.values():
+            for item in items:
+                if item.label == selected_label:
+                    self.current_tz = item.zone
+                    break
 
         # 👉 ここで再描画（重要）
         self.apply_filter()
@@ -232,12 +295,13 @@ class LogViewer:
         # 🔹 上部ボタン
         # =========================
         top_frame = tk.Frame(self.root)
-        top_frame.pack(fill=tk.X, padx=8, pady=8)
+        top_frame.pack(fill=tk.X, padx=5, pady=5)
 
         tk.Button(top_frame, text="単一ログを開く", command=self.open_log_file).pack(side=tk.LEFT)
         tk.Button(top_frame, text="複数ログを開く", command=self.open_logs).pack(side=tk.LEFT, padx=8)
         tk.Button(top_frame, text="フィルタ解除", command=self.reset_filters).pack(side=tk.LEFT)
-
+        #=====Timezone Dropdown=====
+        self._build_timezone_dropdown(top_frame)
         # =========================
         # 🔹 フィルタ
         # =========================
