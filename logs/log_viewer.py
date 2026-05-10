@@ -123,12 +123,14 @@ class LogViewer:
         self.root.geometry("1200x650+100+100")
         # 基本設定
         self.log_dir: Path = LOGS_DIR
+
         # ----元ログ (raw)----
         self.raw_rows: list[LogDict] = []
         # ----検索後ログ (filtered)----
         self.filtered_rows: list[LogDict] = []
         # ----表示用Event (rows)----
         self.rows: list[Event] = []
+
         # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
         # ------現在のUTC日時------
@@ -154,8 +156,8 @@ class LogViewer:
         self.area_var = tk.StringVar()
         # city
         self.tz_var = tk.StringVar()
-
-
+        # debag用
+        print("DEBUG filtered_rows exists")
         # ===== 全体UI構築 =====
         self._build_ui()
 
@@ -452,6 +454,7 @@ class LogViewer:
         events: list[Event] = summarize(safe_logs)
 
         # ③ Viewerにセット
+        self.raw_rows = safe_logs
         self.rows = events
 
         self.update_filters()
@@ -472,6 +475,7 @@ class LogViewer:
         # 🔹 searcher経由で取得（統一）
         logs: list[LogDict] = collect_logs([Path(file_path_str)])
 
+        self.raw_rows = logs
         self.rows = summarize(logs)
         self.update_filters()
         self.apply_filter()
@@ -488,6 +492,7 @@ class LogViewer:
         logs: list[LogDict] = collect_logs(paths)
 
         # 🔹 Viewerは表示だけ
+        self.raw_rows = logs
         self.rows = summarize(logs)
         self.update_filters()
         self.apply_filter()
@@ -496,16 +501,14 @@ class LogViewer:
         """フィルタ候補を更新する"""
         trace_ids: list[str] = sorted(
             {
-                self._get_trace_id(row)
-                for row in self.rows
-                if self._get_trace_id(row)
+                self._get_log_trace_id(row)
+                for row in self.raw_rows
             }
         )
         types: list[str] = sorted(
             {
-                self._get_type(row)
-                for row in self.rows
-                if self._get_type(row)
+                self._get_log_type(row)
+                for row in self.raw_rows
             }
         )
 
@@ -521,6 +524,26 @@ class LogViewer:
         self.type_var.set(self.TYPE_ALL)
         self.apply_filter()
 
+    def _get_log_trace_id(
+        self,
+        row: LogDict,
+    ) -> str:
+        """LogDictからtrace_id取得"""
+        return row["trace_id"]
+    
+    def _get_log_message(
+        self,
+        row: LogDict,
+    ) -> str:
+        """LogDictからmessage取得"""
+        return row["what"]["message"]
+    
+    def _get_log_type(
+        self,
+        row: LogDict,
+    ) -> str:
+        """LogDictからlevel取得"""
+        return row["level"]
 
     def parse_datetime(self, value: str, tz: str) -> datetime | None:
         """文字列 → datetime（UTC or Local対応）"""
@@ -585,7 +608,9 @@ class LogViewer:
             # Python 3.8以下の場合はUTCを返す（簡易対応）
             return timezone.utc
 
-    def parse_datetime_with_semantics(self, value: str) -> tuple[None, None] | tuple[Literal['date'], datetime] | tuple[Literal['datetime'], datetime]:
+    def parse_datetime_with_semantics(
+        self,
+        value: str) -> tuple[None, None] | tuple[Literal['date'], datetime] | tuple[Literal['datetime'], datetime]:
         """日時文字列を解析し、date-onlyかdatetimeかを区別して返す「意味付け」"""
         dt: datetime | None = self.parse_datetime(value, self.current_tz)
 
@@ -679,8 +704,8 @@ class LogViewer:
         
         for row in self.raw_rows:
 
-            row_trace_id: str = self._get_trace_id(row)
-            row_type: str = self._get_type(row)
+            row_trace_id: str = self._get_log_trace_id(row)
+            row_type: str = self._get_log_type(row)
 
             # 🔹 TRACEフィルタ
             if trace_filter != self.TRACE_ALL and row_trace_id != trace_filter:
@@ -691,7 +716,7 @@ class LogViewer:
                 continue
 
             # 🔹 時刻（内部変換でUTC基準に統一、表示はlocal）
-            row_dt: datetime | None = self.parse_datetime(row.time, self.current_tz)
+            row_dt: datetime | None = self.parse_datetime(row["time"], self.current_tz)
             
             if row_dt is None:
                 continue
@@ -727,11 +752,11 @@ class LogViewer:
 
             # 🔹 -----通常検索-----
             elif search_lower:
-                message: str = self._get_message(row).lower()
+                message: str = self._get_log_message(row).lower()
                 trace_id: str = row_trace_id.lower()
-                utc_time: str = str(row.time).lower()
+                utc_time: str = str(row["time"]).lower()
                 # jst_time: str = self._format_local_time(row.time).lower()
-                world_local_time: str = to_world_local_str(row.time, tz).lower()
+                world_local_time: str = to_world_local_str(row["time"], tz).lower()
 
                 if (
                     search_lower not in message
@@ -743,16 +768,16 @@ class LogViewer:
                     continue
 
             # 🔹 表示
-            self.filtered_rows.append(row.raw)
+            self.filtered_rows.append(row)
             self.tree.insert(
                 "",
                 "end",
                 iid=str(display_index),
                 values=(
                     row_type,
-                    self._format_world_local_time(row.time),
+                    self._format_world_local_time(row["time"]),
                     row_trace_id,
-                    self._get_message(row),
+                    self._get_log_message(row),
                 ),
                 tags=(row_type,),
             )
@@ -763,21 +788,6 @@ class LogViewer:
         """UTCをworld_local時間文字列へ変換する"""
         dt: datetime | None = to_world_local_datetime(value, self.current_tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt is not None else str(value)
-    
-    def _get_type(self, row: Event) -> str:
-        """type文字列を安全に返す"""
-        if row.type is not None:
-            return row.type.name  # ← Enum → str
-
-        return row.level.name  # ← Enum → str
-
-    def _get_message(self, row: Event) -> str:
-        """message文字列を安全に返す"""
-        return str(row.message)
-
-    def _get_trace_id(self, row: Event) -> str:
-        """trace_id文字列を安全に返す"""
-        return str(row.trace_id or "")
 
     def on_click(self, event: tk.Event) -> None:
         """シングルクリックで詳細表示"""

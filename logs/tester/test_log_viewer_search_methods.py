@@ -28,9 +28,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
+import logs.log_viewer as lv
 from logs.log_searcher import collect_logs, summarize
 from logs.log_types import LogDict
-from logs.log_viewer import LogViewer
+
+print("DEBUG IMPORT:", lv.__file__)
 
 DEFAULT_FILENAMES: Final[list[str]] = [
     "alarm_2026-04-22.jsonl",
@@ -80,14 +82,14 @@ def find_default_log_files() -> list[Path]:
     return []
 
 
-def build_viewer_with_logs(paths: list[Path]) -> tuple[tk.Tk, LogViewer]:
+def build_viewer_with_logs(paths: list[Path]) -> tuple[tk.Tk, lv.LogViewer]:
     """LogViewerを作成し、実際のViewerと同じrowsへログをセットする。"""
 
     root = tk.Tk()
     root.withdraw()  # テストなので画面は出さない
 
 
-    viewer = LogViewer(root)
+    viewer = lv.LogViewer(root)
 
         # 🔥 応急処置
     if not hasattr(viewer, "current_tz"):
@@ -109,7 +111,7 @@ def build_viewer_with_logs(paths: list[Path]) -> tuple[tk.Tk, LogViewer]:
     return root, viewer
 
 
-def run_one_case(viewer: LogViewer, case: SearchCase) -> tuple[bool, int]:
+def run_one_case(viewer: lv.LogViewer, case: SearchCase) -> tuple[bool, int]:
     """検索欄に値を入れて、LogViewer.apply_filter() の実結果を数える。"""
 
     viewer.trace_var.set(viewer.TRACE_ALL)
@@ -125,7 +127,7 @@ def run_one_case(viewer: LogViewer, case: SearchCase) -> tuple[bool, int]:
     return ok, actual
 
 
-def debug_range_parse(viewer: LogViewer, query: str) -> str:
+def debug_range_parse(viewer: lv.LogViewer, query: str) -> str:
     """範囲検索文字列を LogViewer.parse_range() がどう解釈しているか表示する。"""
 
     if ".." not in query and " - " not in query:
@@ -153,7 +155,7 @@ def main() -> int:
         print(path)
 
     root: tk.Tk
-    viewer: LogViewer
+    viewer: lv.LogViewer
 
     root, viewer = build_viewer_with_logs(paths)
 
