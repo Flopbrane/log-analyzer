@@ -23,6 +23,7 @@ env/
 *.tmp
 *.temp
 *.bak
+_tzinfo_data/
 
 # =========================
 # 🖥️ VSCode / 開発環境
@@ -30,6 +31,7 @@ env/
 .vscode/
 *.code-workspace
 contents_class_def/
+
 # =========================
 # 🪟 OS関連
 # =========================

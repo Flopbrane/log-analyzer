@@ -29,15 +29,14 @@ from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.time_utils import (
     now_utc,
-    to_utc_datetime,
     to_world_local_datetime,
-    to_world_local_str,
 )
 from logs.tzinfo_formatter import (
     TimeZoneData,
     TimeZoneItem,
     build_timezone_data,
 )
+from logs.viewer_searcher import match_search_query
 
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
@@ -666,38 +665,13 @@ class LogViewer:
         trace_filter: str = self.trace_var.get()
         type_filter: str = self.type_var.get()
         search_text: str = self.search_var.get().strip()
-        search_lower: str = search_text.lower()
         tz: str = self.current_tz
 
         self.filtered_rows = []
 
-        # 🔥 日付単体検索
-        date_search: datetime | None = None
-
-        if search_text and ".." not in search_text and " - " not in search_text:
-            date_search = self.parse_datetime(search_text, self.current_tz)
-        
         # 🔹 画面クリア
         for item_id in self.tree.get_children():
             self.tree.delete(item_id)
-
-        # 🔹 範囲検索準備
-        start_utc_dt: datetime | None = None
-        end_utc_dt: datetime | None = None
-
-        if " - " in search_text or ".." in search_text:
-            try:
-                start_utc_dt, end_utc_dt = self.parse_range(search_text)
-            except Exception:
-                pass
-
-        if self.rows:
-            base: datetime | None = to_utc_datetime(self.rows[0].time)
-            self.base_utc_dt = base if base else now_utc()
-
-        if start_utc_dt and end_utc_dt and start_utc_dt.year == 1900:
-            start_utc_dt = datetime.combine(self.base_utc_dt.date(), start_utc_dt.time())
-            end_utc_dt = datetime.combine(self.base_utc_dt.date(), end_utc_dt.time())
 
         # 🔹 メインループ
         display_index = 0
@@ -715,57 +689,8 @@ class LogViewer:
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
 
-            # 🔹 時刻（内部変換でUTC基準に統一、表示はlocal）
-            row_dt: datetime | None = self.parse_datetime(row["time"], self.current_tz)
-            
-            if row_dt is None:
+            if not match_search_query(row, search_text, tz):
                 continue
-
-            row_utc: datetime | None = self.to_utc_search_dt(row_dt)
-            
-            # # debag print
-            # print(f"DEBUG row.time: {row.time}, parsed: {row_dt}, row_utc: {row_utc}")
-            # print(f"DEBUG search_text: {search_text}, date_search: {date_search}, start_utc_dt: {start_utc_dt}, end_utc_dt: {end_utc_dt}")
-
-            # 🔥 日付単体検索（優先）
-            if date_search is not None:
-                search_utc: datetime | None = self.to_utc_search_dt(date_search)
-
-                if row_utc is None or search_utc is None:
-                    continue
-
-                # 日付だけ一致
-                if row_utc.date() != search_utc.date():
-                    continue
-
-            # 🔹 -----範囲検索-----
-            elif start_utc_dt is not None or end_utc_dt is not None:
-                if row_utc is None:
-                    continue
-
-                # 🔥 片側対応
-                if start_utc_dt is not None and row_utc < start_utc_dt:
-                    continue
-
-                if end_utc_dt is not None and row_utc > end_utc_dt:
-                    continue
-
-            # 🔹 -----通常検索-----
-            elif search_lower:
-                message: str = self._get_log_message(row).lower()
-                trace_id: str = row_trace_id.lower()
-                utc_time: str = str(row["time"]).lower()
-                # jst_time: str = self._format_local_time(row.time).lower()
-                world_local_time: str = to_world_local_str(row["time"], tz).lower()
-
-                if (
-                    search_lower not in message
-                    and search_lower not in trace_id
-                    and search_lower not in utc_time
-                    # and search_lower not in jst_time
-                    and search_lower not in world_local_time
-                ):
-                    continue
 
             # 🔹 表示
             self.filtered_rows.append(row)

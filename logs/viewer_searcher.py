@@ -1,55 +1,97 @@
 # -*- coding: utf-8 -*-
-"""ログビューアの検索ロジックを実メソッドで検証するテストScript。"""
+"""LogViewerの検索テキスト解析専用モジュール。"""
 #########################
 # Author: F.Kurokawa
 # Description:
-# LogViewer の検索テキストボックスを実メソッドで検証するテストScript。
+# LogViewerの検索テキストボックスに入力された文字列を解析する。
+# ログの読み込みは行わず、Viewerが保持しているLogDictだけを判定する。
 #########################
-
-
 from __future__ import annotations
 
+import operator
 import re
-import sys
-import tkinter as tk
-from dataclasses import dataclass
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Final, Sequence, cast
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone, tzinfo
+from typing import Any, Callable, Literal, TypeAlias, cast
 
 from zoneinfo import ZoneInfo
 
-import logs.log_viewer as lv
-from logs.log_searcher import collect_logs, summarize
 from logs.log_types import LogDict
 
-print("DEBUG IMPORT:", lv.__file__)
+CompareOperator: TypeAlias = Literal["<", "<=", ">", ">=", "==", "!="]
 
-DEFAULT_FILENAMES: Final[list[str]] = [
-    "alarm_2026-04-22.jsonl",
-    "alarm_2026-04-23.jsonl",
-    "alarm_2026-04-24.jsonl",
-]
+FIELD_MAP: dict[str, str] = {
+    "level": "level",
+    "message": "what.message",
+    "msg": "what.message",
+    "function": "where.function",
+    "func": "where.function",
+    "file": "where.file",
+    "trace": "trace_id",
+    "trace_id": "trace_id",
+    "output": "output",
+    "context": "context",
+}
+
+COMPARE_FUNCS: dict[str, Callable[[float, float], bool]] = {
+    "<": operator.lt,
+    "<=": operator.le,
+    ">": operator.gt,
+    ">=": operator.ge,
+    "==": operator.eq,
+    "!=": operator.ne,
+}
 
 
-@dataclass(frozen=True)
-class SearchCase:
-    """検索欄テスト1件分"""
+def _empty_str_list() -> list[str]:
+    return []
 
-    query: str
-    expected: int
-    note: str
+
+def _empty_str_dict() -> dict[str, str]:
+    return {}
+
+
+def _empty_ignore_rule_list() -> list[IgnoreRule]:
+    return []
+
+
+@dataclass(slots=True)
+class IgnoreRule:
+    """(ignore: <80) のような条件排除ルール。"""
+
+    raw_text: str
+    key: str | None = None
+    operator: CompareOperator | None = None
+    number: float | None = None
+
 
 @dataclass(slots=True)
 class SearchQuery:
-    text: str
-    start: datetime | None
-    end: datetime | None
-    field: str | None
+    """ログViewer用の検索条件。"""
+
+    raw_text: str = ""
+    start: datetime | None = None
+    end: datetime | None = None
+    include_terms: list[str] = field(default_factory=_empty_str_list)
+    exclude_terms: list[str] = field(default_factory=_empty_str_list)
+    field_filters: dict[str, str] = field(default_factory=_empty_str_dict)
+    ignore_rules: list[IgnoreRule] = field(default_factory=_empty_ignore_rule_list)
 
 
-def to_local_datetime(raw_time: object, tz: ZoneInfo) -> datetime | None:
-    """ログの time をローカルdatetimeへ変換する"""
+def resolve_timezone(tz: str | tzinfo) -> tzinfo:
+    """タイムゾーン名をtzinfoにする。"""
+    if isinstance(tz, tzinfo):
+        return tz
+    try:
+        return ZoneInfo(tz)
+    except Exception:
+        if tz == "Asia/Tokyo":
+            return timezone(timedelta(hours=9))
+        return timezone.utc
+
+
+def to_local_datetime(raw_time: object, tz: str | tzinfo) -> datetime | None:
+    """ログのtimeを表示中タイムゾーンのdatetimeへ変換する。"""
     if not isinstance(raw_time, str):
         return None
 
@@ -59,59 +101,86 @@ def to_local_datetime(raw_time: object, tz: ZoneInfo) -> datetime | None:
         return None
 
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+        dt = dt.replace(tzinfo=timezone.utc)
 
-    return dt.astimezone(tz)
+    return dt.astimezone(resolve_timezone(tz))
 
 
 def flatten_text(value: object) -> str:
-    """dict/listを含むログ全体を検索用テキストに潰す"""
+    """dict/listを含む値を全文検索用テキストへ変換する。"""
     if isinstance(value, dict):
-        value_dict: dict[object, object] = cast(dict[object, object], value)  # type: ignore[reportUnnecessaryCast]
+        value_dict: dict[object, object] = cast(dict[object, object], value)
         parts: list[str] = []
-        for k, v in value_dict.items():
-            parts.append(str(k))
-            parts.append(flatten_text(v))
+        for key, child_value in value_dict.items():
+            parts.append(str(key))
+            parts.append(flatten_text(child_value))
         return " ".join(parts)
 
     if isinstance(value, (list, tuple, set)):
-        return " ".join(flatten_text(cast(object, v)) for v in value)  # type: ignore[reportUnnecessaryCast]
+        children: list[object] | tuple[object, ...] | set[object] = cast(
+            list[object] | tuple[object, ...] | set[object],
+            value,
+        )
+        return " ".join(flatten_text(child) for child in children)
 
     return str(value)
 
-# =========================================
-# 日時クエリ解析
-# =========================================
-def parse_date_or_datetime(text: str, *, is_end: bool, tz: ZoneInfo) -> datetime | None:
-    """YYYY-MM-DD / YYYY-MM-DD HH:MM / ISO文字列をdatetimeへ変換"""
+
+def get_nested_value(data: dict[str, Any], dotted_key: str) -> object:
+    """where.function のようなドット区切りキーで値を取得する。"""
+    current: object = data
+
+    for key in dotted_key.split("."):
+        if not isinstance(current, dict):
+            return ""
+        current_dict: dict[str, object] = cast(dict[str, object], current)
+        current = current_dict.get(key, "")
+
+    return current
+
+
+def build_search_blob(log: LogDict, tz: str | tzinfo) -> str:
+    """全文検索用の文字列を作る。"""
+    blob: str = flatten_text(log).lower()
+    local_dt: datetime | None = to_local_datetime(log.get("time"), tz)
+    if local_dt is not None:
+        blob += " " + local_dt.strftime("%Y-%m-%d %H:%M:%S").lower()
+        blob += " " + local_dt.isoformat(timespec="seconds").lower()
+    return blob
+
+
+def parse_date_or_datetime(text: str, *, is_end: bool, tz: str | tzinfo) -> datetime | None:
+    """YYYY-MM-DD / YYYY-MM-DD HH:MM / ISO文字列をdatetimeへ変換する。"""
     text = text.strip()
     if not text:
         return None
 
-    # YYYY-MM-DD のみ
+    local_tz: tzinfo = resolve_timezone(tz)
+
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
         suffix: str = "23:59:59.999999" if is_end else "00:00:00"
-        return datetime.fromisoformat(f"{text} {suffix}").replace(tzinfo=tz)
+        return datetime.fromisoformat(f"{text} {suffix}").replace(tzinfo=local_tz)
 
-    # YYYY-MM-DD HH:MM のように分だけなら、終了側はその分の末尾へ
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}", text):
-        suffix: str = ":59.999999" if is_end else ":00"
+        suffix = ":59.999999" if is_end else ":00"
         normalized: str = text.replace("T", " ") + suffix
-        return datetime.fromisoformat(normalized).replace(tzinfo=tz)
+        return datetime.fromisoformat(normalized).replace(tzinfo=local_tz)
 
-    # YYYY-MM-DD HH:MM:SS または ISO
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}", text):
+        suffix = ".999999" if is_end else ""
+        normalized = text.replace("T", " ") + suffix
+        return datetime.fromisoformat(normalized).replace(tzinfo=local_tz)
+
     try:
-        normalized: str = text.replace("T", " ")
+        normalized = text.replace("T", " ")
         dt: datetime = datetime.fromisoformat(normalized)
     except ValueError:
         return None
 
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=tz)
-    else:
-        dt = dt.astimezone(tz)
+        return dt.replace(tzinfo=local_tz)
 
-    return dt
+    return dt.astimezone(local_tz)
 
 
 def is_date_query(query: str) -> bool:
@@ -125,152 +194,207 @@ def is_time_query(query: str) -> bool:
 def is_datetime_prefix_query(query: str) -> bool:
     return re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?", query) is not None
 
-# =========================================
-# 検索判定
-# =========================================
-def match_field_query(log: dict[str, Any], query: str) -> bool | None:
-    """level:ERROR / message:test_error などのフィールド指定検索"""
-    if ":" not in query:
-        return None
-    field: str
-    keyword: str
 
-    field, keyword = query.split(":", 1)
-    field = field.strip().lower()
-    keyword = keyword.strip().lower()
+def split_range_query(query: str) -> tuple[str, str] | None:
+    """期間検索を start/end に分解する。"""
+    if ".." in query:
+        start_text, end_text = query.split("..", 1)
+        return start_text.strip(), end_text.strip()
 
-    field_map: dict[str, str] = {
-        "level": "level",
-        "message": "what.message",
-        "function": "where.function",
-        "func": "where.function",
-        "file": "where.file",
-        "trace": "trace_id",
-        "trace_id": "trace_id",
-        "output": "output",
-        "context": "context",
-    }
+    if " - " in query:
+        start_text, end_text = query.split(" - ", 1)
+        return start_text.strip(), end_text.strip()
 
-    dotted_key: str | None = field_map.get(field)
-    if dotted_key is None:
-        return None
-
-    value: object = get_nested_value(log, dotted_key)
-    value_text: str = flatten_text(value).lower()
-
-    if field == "level":
-        return value_text == keyword
-
-    return keyword in value_text
+    return None
 
 
-def match_search_query(log: dict[str, Any], query: str, tz: ZoneInfo) -> bool:
-    """検索テキストボックス1回分の判定"""
+def parse_ignore_rule(text: str) -> IgnoreRule:
+    """ignore句をルールへ変換する。"""
+    raw_text: str = text.strip()
+    match: re.Match[str] | None = re.fullmatch(
+        r"(?:(?P<key>[A-Za-z_][\w.]*)\s*)?"
+        r"(?P<op><=|>=|==|!=|<|>)\s*"
+        r"(?P<num>-?\d+(?:\.\d+)?)",
+        raw_text,
+    )
+
+    if match is None:
+        return IgnoreRule(raw_text=raw_text)
+
+    return IgnoreRule(
+        raw_text=raw_text,
+        key=match.group("key"),
+        operator=cast(CompareOperator, match.group("op")),
+        number=float(match.group("num")),
+    )
+
+
+def parse_query(raw_text: str) -> SearchQuery:
+    """検索文字列をSearchQueryに変換する。"""
+    include_terms: list[str] = []
+    exclude_terms: list[str] = []
+    field_filters: dict[str, str] = {}
+    ignore_rules: list[IgnoreRule] = []
+
+    def collect_ignore(match: re.Match[str]) -> str:
+        ignore_rules.append(parse_ignore_rule(match.group(1)))
+        return " "
+
+    query_text: str = re.sub(
+        r"\(\s*ignore\s*:\s*([^)]+)\)",
+        collect_ignore,
+        raw_text,
+        flags=re.IGNORECASE,
+    )
+
+    for token in query_text.split():
+        if not token:
+            continue
+        if token.startswith("-") and len(token) > 1:
+            exclude_terms.append(token[1:].lower())
+            continue
+        if ":" in token:
+            key, value = token.split(":", 1)
+            if key.lower() in FIELD_MAP:
+                field_filters[key.lower()] = value.lower()
+                continue
+        include_terms.append(token.lower())
+
+    return SearchQuery(
+        raw_text=raw_text,
+        include_terms=include_terms,
+        exclude_terms=exclude_terms,
+        field_filters=field_filters,
+        ignore_rules=ignore_rules,
+    )
+
+
+def match_field_filters(log: LogDict, field_filters: dict[str, str]) -> bool:
+    """level:ERROR / message:test_error などのフィールド指定検索。"""
+    for search_field, keyword in field_filters.items():
+        dotted_key: str | None = FIELD_MAP.get(search_field)
+        if dotted_key is None:
+            return False
+
+        value: object = get_nested_value(cast(dict[str, Any], log), dotted_key)
+        value_text: str = flatten_text(value).lower()
+
+        if search_field == "level":
+            if value_text != keyword:
+                return False
+            continue
+
+        if keyword not in value_text:
+            return False
+
+    return True
+
+
+def iter_numeric_values(value: object, *, key_filter: str | None = None) -> list[float]:
+    """dict/listから数値を再帰的に取り出す。"""
+    numbers: list[float] = []
+
+    if isinstance(value, dict):
+        value_dict: dict[object, object] = cast(dict[object, object], value)
+        for key, child_value in value_dict.items():
+            child_value_obj: object = child_value
+            key_text: str = str(key).lower()
+            if key_filter is None or key_text == key_filter or key_text.endswith(f".{key_filter}"):
+                numbers.extend(iter_numeric_values(child_value_obj))
+            else:
+                numbers.extend(iter_numeric_values(child_value_obj, key_filter=key_filter))
+        return numbers
+
+    if isinstance(value, (list, tuple, set)):
+        children: list[object] | tuple[object, ...] | set[object] = cast(
+            list[object] | tuple[object, ...] | set[object],
+            value,
+        )
+        for child in children:
+            numbers.extend(iter_numeric_values(child, key_filter=key_filter))
+        return numbers
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return [float(value)]
+
+    if isinstance(value, str):
+        try:
+            return [float(value)]
+        except ValueError:
+            return []
+
+    return numbers
+
+
+def match_ignore_rule(log: LogDict, rule: IgnoreRule, tz: str | tzinfo) -> bool:
+    """ignore条件に該当するか判定する。Trueなら除外。"""
+    if rule.operator is None or rule.number is None:
+        return rule.raw_text.lower() in build_search_blob(log, tz)
+
+    search_area: object = log.get("context", {})
+    key_filter: str | None = rule.key.lower() if rule.key else None
+    numbers: list[float] = iter_numeric_values(search_area, key_filter=key_filter)
+
+    if not numbers and rule.key is not None:
+        numbers = iter_numeric_values(cast(dict[str, Any], log), key_filter=key_filter)
+
+    compare_func: Callable[[float, float], bool] = COMPARE_FUNCS[rule.operator]
+    return any(compare_func(number, rule.number) for number in numbers)
+
+
+def match_search_query(log: LogDict, query: str, tz: str | tzinfo) -> bool:
+    """検索テキストボックス1回分の判定を行う。"""
     query = query.strip()
     if not query:
         return True
 
     local_dt: datetime | None = to_local_datetime(log.get("time"), tz)
+    range_parts: tuple[str, str] | None = split_range_query(query)
 
-    # 期間検索: 2026-04-23..2026-04-24
-    if ".." in query:
-        start_text, end_text = query.split("..", 1)
+    start_text: str
+    end_text: str
+
+    if range_parts is not None:
+        start_text, end_text = range_parts
         start_dt: datetime | None = parse_date_or_datetime(start_text, is_end=False, tz=tz)
         end_dt: datetime | None = parse_date_or_datetime(end_text, is_end=True, tz=tz)
-        if local_dt is None or start_dt is None or end_dt is None:
+        if local_dt is None:
             return False
-        return start_dt <= local_dt <= end_dt
+        if start_dt is not None and local_dt < start_dt:
+            return False
+        if end_dt is not None and local_dt > end_dt:
+            return False
+        return True
 
-    # フィールド指定検索
-    field_result: bool | None = match_field_query(log, query)
-    if field_result is not None:
-        return field_result
-
-    # 年月日検索
     if is_date_query(query):
         return local_dt is not None and local_dt.strftime("%Y-%m-%d") == query
 
-    # 時刻検索 HH:MM / HH:MM:SS
     if is_time_query(query):
         return local_dt is not None and local_dt.strftime("%H:%M:%S").startswith(query)
 
-    # 日時プレフィックス検索 YYYY-MM-DD HH:MM
     if is_datetime_prefix_query(query):
         normalized: str = query.replace("T", " ")
         return local_dt is not None and local_dt.strftime("%Y-%m-%d %H:%M:%S").startswith(normalized)
 
-    # 通常の全文検索
-    blob: str = flatten_text(log).lower()
-    if local_dt is not None:
-        blob += " " + local_dt.strftime("%Y-%m-%d %H:%M:%S").lower()
-    return query.lower() in blob
+    parsed: SearchQuery = parse_query(query)
+    blob: str = build_search_blob(log, tz)
 
-def get_nested_value(data: dict[str, Any], dotted_key: str) -> object:
-    """辞書のネストされた値を取得する。dotted_keyは "where.function" のような形式"""
-    keys: list[str] = dotted_key.split(".")
-    current: object = data
+    if any(match_ignore_rule(log, rule, tz) for rule in parsed.ignore_rules):
+        return False
 
-    for key in keys:
-        if not isinstance(current, dict):
-            return ""
-        current_dict: dict[str, Any] = cast(dict[str, Any], current)  # type: ignore[reportUnnecessaryCast]
-        current = current_dict.get(key, "")
+    if not match_field_filters(log, parsed.field_filters):
+        return False
 
-    return current
+    if any(term in blob for term in parsed.exclude_terms):
+        return False
 
-# ==========================
-# ログファイルを探す
-# ==========================
-def get_log_files(
-    log_dir: Path,
-    start: date | None = None,
-    end: date | None = None,
-) -> list[Path]:
-    """ログファイルを探す関数。日付クエリに合致するファイルだけ返す。"""
-    result: list[Path] = []
-    for p in log_dir.iterdir():
-        if not p.is_file():
-            continue
-        if p.suffix.lower() not in (".jsonl", ".log"):
-            continue
+    return all(term in blob for term in parsed.include_terms)
 
-        file_date: date | None = extract_date_from_path(p)
-        if file_date is None:
-            continue
 
-        if start and file_date < start:
-            continue
-        if end and file_date > end:
-            continue
-
-        result.append(p)
-    return result
-
-def extract_date_from_path(path: Path) -> date | None:
-    """ファイル名から日付を抽出する。例: alarm_2026-04-22.jsonl -> 2026-04-22"""
-    match: re.Match[str] | None = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
-    if match is None:
-        return None
-    try:
-        return datetime.strptime(match.group(1), "%Y-%m-%d").date()
-    except ValueError:
-        return None
-
-# ==========================
-# 重要イベントを抽出する(全体の入口)
-# ==========================
-def search_logs(
-    log_dir: Path,
-    start: date | None = None,
-    end: date | None = None,
+def filter_logs(
+    logs: list[LogDict],
+    query: str,
+    tz: str | tzinfo,
 ) -> list[LogDict]:
-    """ログファイルから重要イベントを抽出する関数。日付クエリもここで処理する。"""
-    files: list[Path] = get_log_files(log_dir, start, end)
-    all_logs: list[LogDict] = []
-    for file in files:
-        logs: list[LogDict] = collect_logs(file)
-        all_logs.extend(logs)
-
-    return all_logs
-
-
+    """Viewerが既に保持しているログだけを検索条件で絞り込む。"""
+    return [log for log in logs if match_search_query(log, query, tz)]

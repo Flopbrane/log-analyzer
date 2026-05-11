@@ -10,7 +10,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Literal, Protocol, TypeAlias, Union, runtime_checkable
+from subprocess import CompletedProcess
+from typing import Any, Callable, Literal, Protocol, TypeAlias, runtime_checkable
 
 from zoneinfo import ZoneInfo, available_timezones
 
@@ -65,22 +66,7 @@ UnixTime: TypeAlias = float | int
 DateLike: TypeAlias = datetime | date | str | int | float | None
 
 # JSTタイムゾーン
-JST = timezone(timedelta(hours=9))
-
-
-# =========================
-# UnixTime → UTC日時表示(core_DATA用)
-# =========================
-def unix_to_utc_datetime(ts: Union[UnixTime, None]) -> datetime | None:
-    """UNIX時間 → UTCDateTime"""
-    if ts is None:
-        return None
-    try:
-        if isinstance(ts, (int, float)):
-            return datetime.fromtimestamp(float(ts), tz=timezone.utc)
-    except Exception as e:
-        print(f"Error as {e}")
-        return None
+#JST = timezone(timedelta(hours=9))
 
 
 # =========================
@@ -88,7 +74,7 @@ def unix_to_utc_datetime(ts: Union[UnixTime, None]) -> datetime | None:
 # =========================
 def format_unix_to_utc_time(ts: UnixTime | None) -> str:
     """UNIXTIME_to_UTC"""
-    dt: datetime | None = unix_to_utc_datetime(ts)
+    dt: datetime | None = to_utc_datetime(ts)
     if dt is None:
         return ""
     return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -96,14 +82,14 @@ def format_unix_to_utc_time(ts: UnixTime | None) -> str:
 
 def format_unix_to_utc_iso(ts: UnixTime | None) -> str:
     """UNIXTIME_to_UTC"""
-    dt: datetime | None = unix_to_utc_datetime(ts)
+    dt: datetime | None = to_utc_datetime(ts)
     if dt is None:
         return ""
     return dt.isoformat(timespec="seconds")
 
 
 # =========================
-# UTC現在時刻
+# UTCの時間精度を変更する
 # =========================
 def now_utc(config: LoggerConfig | None = None) -> datetime:
     """UTCの時間精度を変更する"""
@@ -122,56 +108,23 @@ def now_utc(config: LoggerConfig | None = None) -> datetime:
 # =========================
 # UTC変換
 # =========================
-def to_utc_datetime(
-    value: DateLike = None,
-    *,
-    logger: LoggerLike | None = None
-    ) -> datetime | None:
-    """値をUTCのdatetimeに変換する"""
-    if value is None:
-        return None
+def _resolve_timezone(
+    tz: str | ZoneInfo,
+    logger: LoggerLike | None = None,
+) -> ZoneInfo | timezone | None:
+    """tzをtzinfoへ変換する"""
+    if isinstance(tz, ZoneInfo):
+        return tz
 
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.replace(tzinfo=JST).astimezone(timezone.utc)
-        return value.astimezone(timezone.utc).replace(microsecond=0)
-
-    # dateはJSTの00:00として扱う
-    if isinstance(value, date):
-        return datetime.combine(
-            value,
-            time(0, 0),
-            tzinfo=JST).astimezone(timezone.utc).replace(microsecond=0)
-
-    if isinstance(value, time): # timeだけでは、UTC変換に疑問が残るため使用しない
+    try:
+        return ZoneInfo(tz)
+    except Exception as e:
         if logger:
-            logger.warning("time単体はサポートされていません")
+            logger.warning(
+                "Invalid timezone",
+                context={"tz": tz, "error": str(e)},
+            )
         return None
-
-        # 🔥 ここ追加
-    if isinstance(value, (int, float)):
-        try:
-            return datetime.fromtimestamp(value, tz=timezone.utc).replace(microsecond=0)
-        except Exception:
-            return None
-
-    if isinstance(value, str):
-        try:
-            dt: datetime = datetime.fromisoformat(value).replace(microsecond=0)
-        except ValueError:
-            if logger:
-                logger.warning(f"Invalid datetime string: {value}")
-            return None
-
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=JST).astimezone(timezone.utc).replace(microsecond=0)
-
-        return dt.astimezone(timezone.utc).replace(microsecond=0)
-
-    if logger:
-        logger.warning(f"Unsupported type: {type(value)}")
-
-    return None
 
 
 def to_utc_datetime_from_world_local_dt(
@@ -185,34 +138,18 @@ def to_utc_datetime_from_world_local_dt(
     if value is None:
         return None
 
-    # 🔹 tzをZoneInfoに統一
-    try:
-        tzinfo: ZoneInfo = ZoneInfo(tz) if isinstance(tz, str) else tz
-    except Exception as e:
-        if logger:
-            logger.warning(
-                "Invalid timezone",
-                context={"tz": tz, "error": str(e)},
-            )
-        return None
-
     # 🔹 datetime
     if isinstance(value, datetime):
         if value.tzinfo is None:
+            tzinfo = _resolve_timezone(tz, logger)
+            if tzinfo is None:
+                return None
             return (
                 value.replace(tzinfo=tzinfo)
                 .astimezone(timezone.utc)
                 .replace(microsecond=0)
             )
         return value.astimezone(timezone.utc).replace(microsecond=0)
-
-    # 🔹 date → 00:00
-    if isinstance(value, date):
-        return (
-            datetime.combine(value, time(0, 0), tzinfo=tzinfo)
-            .astimezone(timezone.utc)
-            .replace(microsecond=0)
-        )
 
     # 🔹 time（非対応）
     if isinstance(value, time):
@@ -229,8 +166,21 @@ def to_utc_datetime_from_world_local_dt(
                 logger.warning(
                     "Invalid UNIX timestamp",
                     context={"value": value, "error": str(e)},
-                )
+            )
             return None
+
+    tzinfo: ZoneInfo | timezone | None = _resolve_timezone(tz, logger)
+    
+    if tzinfo is None:
+        return None
+
+    # 🔹 date → 00:00
+    if isinstance(value, date):
+        return (
+            datetime.combine(value, time(0, 0), tzinfo=tzinfo)
+            .astimezone(timezone.utc)
+            .replace(microsecond=0)
+        )
 
     # 🔹 str（ISO）
     if isinstance(value, str):
@@ -263,34 +213,18 @@ def to_utc_datetime_from_world_local_dt(
     return None
 
 
+to_utc_datetime: Callable[..., datetime | None] = to_utc_datetime_from_world_local_dt
+
+
 # =========================
-# ISO（UTC）
+# ISO（UTC_str）
 # =========================
 def to_utc_iso(value: DateLike) -> str | None:
     """値をUTCのISOフォーマット文字列に変換する"""
-    dt: datetime | None = to_utc_datetime(value)
+    dt: datetime | None = to_utc_datetime_from_world_local_dt(value)
     if dt is None:
         return None
     return dt.isoformat()
-
-
-# =========================
-# JST変換
-# =========================
-# def to_jst_datetime(value: DateLike) -> datetime | None:
-#     """値をJSTのdatetimeに変換する（表示専用）"""
-#     dt: datetime | None = to_utc_datetime(value)
-#     if dt is None:
-#         return None
-#     return dt.astimezone(JST)
-
-
-# def to_jst_str(value: DateLike) -> str | None:
-#     """値をJSTの文字列に変換する(表示用)"""
-#     dt: datetime | None = to_utc_datetime(value)
-#     if dt is None:
-#         return ""
-#     return dt.astimezone(JST).isoformat(timespec="seconds")
 
 
 # ========================
@@ -304,7 +238,7 @@ def to_world_local_datetime(
 ) -> datetime | None:
     """任意タイムゾーンdatetimeへ変換（最終出口）"""
 
-    dt: datetime | None = to_utc_datetime(value, logger=logger)
+    dt: datetime | None = to_utc_datetime_from_world_local_dt(value, logger=logger)
     if dt is None:
         return None
 
@@ -313,6 +247,10 @@ def to_world_local_datetime(
         return dt.astimezone(tzinfo)
 
     except Exception as e:
+        if not tz:
+            tz = "Asia/Tokyo (default)"
+            return dt.astimezone(ZoneInfo("Asia/Tokyo"))
+        
         if logger:
             logger.warning(
                 f"Invalid timezone: {tz}",
@@ -380,3 +318,109 @@ def list_timezones_formatted() -> list[tuple[str, str]]:
             continue
 
     return results
+
+
+# ========================
+# tzdata auto updater
+# ========================
+def update_tzdata_if_year_changed(
+    *,
+    state_file: str | None = None,
+    logger: LoggerLike | None = None,
+) -> bool:
+    """年が変わった時だけtzdataを最新版へ更新する"""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    current_year: int = date.today().year
+    update_state_file: Path = (
+        Path(state_file)
+        if state_file
+        else Path(__file__).with_name(".tzdata_updated_year")
+    )
+
+    try:
+        last_updated_year: int | None = int(
+            update_state_file.read_text(encoding="utf-8").strip()
+        )
+    except (FileNotFoundError, ValueError):
+        last_updated_year = None
+    except Exception as e:
+        if logger:
+            logger.warning(
+                "tzdata update state read failed",
+                context={"error": str(e), "state_file": str(update_state_file)},
+            )
+        last_updated_year = None
+
+    if last_updated_year == current_year:
+        return False
+
+    try:
+        result: CompletedProcess[str] = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "tzdata",
+            ],  # sys.executable =「今動いてるPython」でpip実行 → venvのPythonにインストールされる
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except Exception as e:
+        if logger:
+            logger.warning("tzdata update failed", context={"error": str(e)})
+        return False
+
+    try:
+        import tzdata
+
+        tzdata_version: str = getattr(
+            tzdata,
+            "__version__",
+            "unknown",
+        )
+
+    except Exception:
+        tzdata_version = "unknown"
+
+    if result.returncode != 0:
+        if logger:
+            logger.warning(
+                "tzdata update failed",
+                context={
+                    "returncode": result.returncode,
+                    "stderr": result.stderr.strip(),
+                },
+            )
+        return False
+
+    try:
+        update_state_file.write_text(str(current_year), encoding="utf-8")
+    except Exception as e:
+        if logger:
+            logger.warning(
+                "tzdata update state write failed",
+                context={"error": str(e), "state_file": str(update_state_file)},
+            )
+
+    if logger:
+        logger.info(
+            "tzdata updated",
+            context={
+                "year": current_year,
+                "tzdata_version": tzdata_version,
+                "stdout": result.stdout.strip(),
+                "python": sys.executable,
+            },
+        )
+
+    return True
+
+
+if __name__ == "__main__":
+    update_tzdata_if_year_changed()

@@ -165,7 +165,6 @@ def main() -> int:
     print(f"loaded events: {len(viewer.rows)}")
     print(f"timezone: {viewer.current_tz}")
     print()
-
     # 前回の独自テスターで期待していた件数。
     # 今回は LogViewer.apply_filter() の実結果と照合する。
     cases: list[SearchCase] = [
@@ -181,8 +180,8 @@ def main() -> int:
         SearchCase("10:15", 18, "時刻検索 HH:MM"),
         SearchCase("10:16", 18, "時刻検索 HH:MM"),
         SearchCase("2026-04-24 10:16", 18, "日時プレフィックス検索"),
-        SearchCase("level:ERROR", 4, "level指定 ※現在のViewerが対応しているか確認"),
-        SearchCase("level:WARNING", 11, "level指定 ※現在のViewerが対応しているか確認"),
+        SearchCase("level:error", 4, "level指定 ※現在のViewerが対応しているか確認"),
+        SearchCase("level:warning", 11, "level指定 ※現在のViewerが対応しているか確認"),
         SearchCase("message:test_error", 4, "message指定 ※現在のViewerが対応しているか確認"),
         SearchCase("message:system_cpu_percent", 24, "message指定 ※現在のViewerが対応しているか確認"),
         SearchCase("message:system_gpu_status", 18, "message指定 ※現在のViewerが対応しているか確認"),
@@ -191,6 +190,20 @@ def main() -> int:
         SearchCase("context:cpu_percent", 24, "contextキー検索 ※現在のViewerが対応しているか確認"),
         SearchCase("context:gpu_mem_total_mb", 18, "contextキー検索 ※現在のViewerが対応しているか確認"),
         SearchCase("trace_id:fc036f388b7542c48117d55c8ec1728c", 3, "trace_id指定 ※現在のViewerが対応しているか確認"),
+        SearchCase("cpu -gpu", 24, "gpuを除外したcpu検索"),
+        SearchCase("message:system -gpu", 28, "gpu関連除外"),
+        SearchCase("level:warning message:system_cpu_percent", 11, "複数条件AND"),
+        SearchCase("context.cpu_percent >=20", 6, "CPU使用率20%以上"),
+        SearchCase("context.gpu_mem_total_mb>1000", 12, "GPUメモリ使用量"),
+        SearchCase("cpu (ignore: context.cpu_percent <80)", 6, "ignoreルール"),
+        SearchCase("context.cpu_percent >=80", 0, "境界値 >=80"),
+        SearchCase("context.cpu_percent <80", 0, "境界値 <80"),
+        SearchCase("context.invalid_key:abc", 0, "存在しないcontext"),
+        SearchCase("level:", 0, "空field値"),
+        SearchCase(":ERROR", 0, "空field名"),
+        SearchCase("context.cpu_percent >>80", 0, "不正演算子"),
+        SearchCase("2026-04-23 00:00", 0, "TZ変換境界"),
+        SearchCase("trace_id count", 5, "trace_idの総数を確認"),
     ]
 
     print("=== LogViewer.apply_filter() tests ===")

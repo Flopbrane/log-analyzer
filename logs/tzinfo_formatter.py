@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 from zoneinfo import available_timezones
 
+from logs.time_utils import update_tzdata_if_year_changed
+
 
 @dataclass(slots=True)
 class TimeZoneItem:
@@ -39,6 +41,10 @@ EXCLUDED_PREFIXES: tuple[str, ...] = (
     "Chile/",
     "Argentina/",
 )
+
+def ensure_tzdata_updated() -> None:
+    """年が変わったタイミングでtzdataの更新を促す関数"""
+    update_tzdata_if_year_changed()
 
 def is_excluded_prefix(tz: str) -> bool:
     """タイムゾーンが除外対象か判定"""
