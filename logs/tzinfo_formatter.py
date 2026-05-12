@@ -115,6 +115,16 @@ def build_timezone_data() -> TimeZoneData:
 
     items: list[TimeZoneItem] = build_timezone_items()
 
+    if not items:
+        items = [
+            TimeZoneItem(
+                zone="Asia/Tokyo",
+                area="Asia",
+                city="Tokyo",
+                label="Asia - Tokyo",
+            )
+        ]
+
     area_map: dict[str, list[TimeZoneItem]] = build_area_map(items)
 
     area_list: list[str] = sorted(area_map.keys())

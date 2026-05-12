@@ -11,15 +11,12 @@ from __future__ import annotations
 
 import ast
 import json
-import re
 import subprocess
 import tkinter as tk
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, ttk
-from typing import Any, Final, Literal
-
-from zoneinfo import ZoneInfo
+from tkinter import filedialog, messagebox, ttk
+from typing import Any, Final
 
 from logs.display_formatter import LogRenderer
 from logs.log_paths import LOGS_DIR
@@ -27,8 +24,20 @@ from logs.log_searcher import collect_logs, summarize
 from logs.log_storage import load_log
 from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
+from logs.openai_key_store import (
+    delete_openai_api_key,
+    has_openai_api_key,
+    is_keyring_available,
+    save_openai_api_key,
+)
+from logs.search_matcher import (
+    apply_result_modifiers,
+    match_search_query,
+    run_aggregate_query,
+)
+from logs.search_models import SearchQuery
+from logs.search_text_analysis import parse_query
 from logs.time_utils import (
-    now_utc,
     to_world_local_datetime,
 )
 from logs.tzinfo_formatter import (
@@ -36,7 +45,6 @@ from logs.tzinfo_formatter import (
     TimeZoneItem,
     build_timezone_data,
 )
-from logs.viewer_searcher import match_search_query
 
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
@@ -132,8 +140,6 @@ class LogViewer:
 
         # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
-        # ------現在のUTC日時------
-        self.base_utc_dt: datetime = now_utc() # UTCで運用
         # 仕様別フィルタ
         self.trace_var = tk.StringVar(value=self.TRACE_ALL)
         self.type_var = tk.StringVar(value=self.TYPE_ALL)
@@ -147,6 +153,7 @@ class LogViewer:
         self.type_dropdown: ttk.Combobox
         self.tree: ttk.Treeview
         self.search_var = tk.StringVar()
+        self.aggregate_result_var = tk.StringVar()
 
         # ===== TimeZoneデータ =====
         self.tz_data: TimeZoneData = build_timezone_data()
@@ -271,32 +278,11 @@ class LogViewer:
         self.apply_filter()
 
     # =======================
-    # 内部の比較は、全てUTCで運用
-    # =======================
-    def to_utc_search_dt(self, dt: datetime | None) -> datetime | None:
-        """内部日時は全てUTCで運用するための変換関数(一覧はJST表示)"""
-        if dt is None:
-            return None
-
-        # 🔹 timeのみ（1900年）対応
-        if dt.year == 1900:
-            return datetime.combine(
-                self.base_utc_dt.date(),
-                dt.time(),
-                tzinfo=timezone.utc,
-            )
-
-        # 🔹 naive → UTC
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-
-        return dt.astimezone(timezone.utc)
-
-    # =======================
     # UI構築(メイン・ウインド)
     # =======================
     def _build_ui(self) -> None:
         """UIを構築する"""
+        self._build_menu()
 
         # =========================
         # 🔹 上部ボタン
@@ -343,6 +329,12 @@ class LogViewer:
         ).pack(side=tk.LEFT, padx=(4, 12))
 
         tk.Button(filter_frame, text="検索", command=self.apply_filter).pack(side=tk.LEFT)
+        tk.Label(
+            filter_frame,
+            textvariable=self.aggregate_result_var,
+            anchor="w",
+            fg="#005a9e",
+        ).pack(side=tk.LEFT, padx=(12, 0), fill=tk.X, expand=True)
 
         # =========================
         # 🔥 Tree専用フレーム（重要）
@@ -435,6 +427,120 @@ class LogViewer:
 
         self.tree.bind("<ButtonRelease-1>", self.on_click)
         self.tree.bind("<Double-1>", self.on_double_click)
+
+    def _build_menu(self) -> None:
+        """メインメニューを構築する。"""
+        menu_bar = tk.Menu(self.root)
+        app_menu = tk.Menu(menu_bar, tearoff=False)
+        app_menu.add_command(
+            label="OPEN API Keyの登録",
+            command=self.open_openai_api_key_dialog,
+        )
+        app_menu.add_command(label="オプション", command=self.open_options_dialog)
+        app_menu.add_separator()
+        app_menu.add_command(label="終了", command=self.exit_app)
+
+        menu_bar.add_cascade(label="メニュー", menu=app_menu)
+        self.root.config(menu=menu_bar)
+
+    def open_openai_api_key_dialog(self) -> None:
+        """OpenAI API Key登録ダイアログを開く。"""
+        window = tk.Toplevel(self.root)
+        window.title("OPEN API Keyの登録")
+        window.geometry("520x220")
+        window.resizable(False, False)
+        window.transient(self.root)
+        window.grab_set()
+
+        status_text = (
+            "登録済みです。保存し直すか、削除できます。"
+            if has_openai_api_key()
+            else "未登録です。高精度な意味検索を使う場合のみ登録してください。"
+        )
+
+        tk.Label(window, text=status_text, anchor="w").pack(
+            fill=tk.X,
+            padx=16,
+            pady=(14, 8),
+        )
+        tk.Label(
+            window,
+            text="API KeyはScriptには保存せず、このPCの資格情報ストアへ保存します。",
+            anchor="w",
+            fg="#555555",
+        ).pack(fill=tk.X, padx=16, pady=(0, 10))
+
+        input_frame = tk.Frame(window)
+        input_frame.pack(fill=tk.X, padx=16)
+
+        tk.Label(input_frame, text="API Key").pack(side=tk.LEFT)
+        key_var = tk.StringVar()
+        key_entry = tk.Entry(input_frame, textvariable=key_var, show="*", width=54)
+        key_entry.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
+        key_entry.focus_set()
+
+        button_frame = tk.Frame(window)
+        button_frame.pack(fill=tk.X, padx=16, pady=18)
+
+        def on_save() -> None:
+            api_key = key_var.get().strip()
+            if not api_key:
+                messagebox.showwarning("入力確認", "API Keyを入力してください。", parent=window)
+                return
+            if not is_keyring_available():
+                messagebox.showerror(
+                    "keyringが必要です",
+                    "安全に保存するため、keyringをインストールしてください。\n\npip install keyring",
+                    parent=window,
+                )
+                return
+            save_openai_api_key(api_key)
+            messagebox.showinfo("保存完了", "API KeyをこのPCに保存しました。", parent=window)
+            window.destroy()
+
+        def on_delete() -> None:
+            if not is_keyring_available():
+                messagebox.showerror(
+                    "keyringが必要です",
+                    "keyringが無いため資格情報ストアを操作できません。",
+                    parent=window,
+                )
+                return
+            delete_openai_api_key()
+            messagebox.showinfo("削除完了", "保存済みAPI Keyを削除しました。", parent=window)
+            window.destroy()
+
+        tk.Button(button_frame, text="保存", command=on_save).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="削除", command=on_delete).pack(side=tk.LEFT, padx=8)
+        tk.Button(button_frame, text="キャンセル", command=window.destroy).pack(side=tk.RIGHT)
+
+        window.wait_window()
+
+    def open_options_dialog(self) -> None:
+        """検索オプションダイアログを開く。"""
+        window = tk.Toplevel(self.root)
+        window.title("オプション")
+        window.geometry("520x180")
+        window.resizable(False, False)
+        window.transient(self.root)
+        window.grab_set()
+
+        key_status = "登録済み" if has_openai_api_key() else "未登録"
+        messages = [
+            "現在の similar 検索: ローカル近似検索",
+            f"OPEN API Key: {key_status}",
+            "Key未登録時はAPIを使わず、TF-IDF/文字n-gram近似検索で動作します。",
+            "embeddingsによる高精度検索は将来の切替予定です。",
+        ]
+        for message in messages:
+            tk.Label(window, text=message, anchor="w").pack(fill=tk.X, padx=16, pady=3)
+
+        tk.Button(window, text="閉じる", command=window.destroy).pack(pady=14)
+        window.wait_window()
+
+    def exit_app(self) -> None:
+        """アプリを終了する。"""
+        self.root.destroy()
 
     def reload_log(self, path: Path) -> None:
         """単一ログファイルを再読み込み"""
@@ -544,121 +650,6 @@ class LogViewer:
         """LogDictからlevel取得"""
         return row["level"]
 
-    def parse_datetime(self, value: str, tz: str) -> datetime | None:
-        """文字列 → datetime（UTC or Local対応）"""
-        value = value.strip()
-
-        if not value:
-            return None
-
-        # 🔴 UTC（Z）
-        if value.endswith("Z"):
-            try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
-            except ValueError:
-                return None
-
-        # 🔵 offset付き
-        if "+" in value or "-" in value[10:]:
-            try:
-                return datetime.fromisoformat(value)
-            except ValueError:
-                return None
-
-        # 🟢 ISO（ローカル）
-        try:
-            dt: datetime = datetime.fromisoformat(value)
-            return dt.replace(tzinfo=self.get_local_tz(tz))
-        except ValueError:
-            pass
-
-        # 🟡 YYYYMMDD
-        if re.fullmatch(r"\d{8}", value):
-            try:
-                dt: datetime = datetime.strptime(value, "%Y%m%d")
-                return dt.replace(tzinfo=self.get_local_tz(tz))
-            except ValueError:
-                return None
-
-        # 🟡 HH:MM
-        if re.fullmatch(r"\d{1,2}:\d{1,2}", value):
-            try:
-                dt: datetime = datetime.strptime(value, "%H:%M")
-                return dt.replace(tzinfo=self.get_local_tz(tz))
-            except ValueError:
-                return None
-
-        # 🟡 HHMM
-        if re.fullmatch(r"\d{3,4}", value):
-            try:
-                dt: datetime = datetime.strptime(value.zfill(4), "%H%M")
-                return dt.replace(tzinfo=self.get_local_tz(tz))
-            except ValueError:
-                return None
-
-        return None
-    
-    def get_local_tz(self, tz_name: str) -> tzinfo:
-        """ローカルタイムゾーンを取得する"""
-        try:
-            # Python 3.9+
-            return ZoneInfo(tz_name)
-        except Exception:
-            # Python 3.8以下の場合はUTCを返す（簡易対応）
-            return timezone.utc
-
-    def parse_datetime_with_semantics(
-        self,
-        value: str) -> tuple[None, None] | tuple[Literal['date'], datetime] | tuple[Literal['datetime'], datetime]:
-        """日時文字列を解析し、date-onlyかdatetimeかを区別して返す「意味付け」"""
-        dt: datetime | None = self.parse_datetime(value, self.current_tz)
-
-        if dt is None:
-            return None, None
-
-        if self.is_date_only(dt):
-            return ("date", dt)
-
-        return ("datetime", dt)
-
-
-    def is_date_only(self, dt: datetime) -> bool:
-        """日時が日付のみ（時間部分が00:00:00）か判定する"""
-        return dt.hour == 0 and dt.minute == 0 and dt.second == 0
-
-
-    def parse_range(self, text: str) -> tuple[datetime | None, datetime | None]:
-        """範囲検索文字列を解析し、UTC datetimeのタプルを返す"""
-        text = text.strip()
-        start_str: str = ""
-        end_str: str = ""
-        
-        if ".." in text:
-            start_str, end_str = text.split("..", 1)
-        elif " - " in text:
-            start_str, end_str = text.split(" - ", 1)
-        else:
-            return None, None
-
-        start_str = start_str.strip()
-        end_str = end_str.strip()
-
-        start: datetime | None = self.parse_datetime(start_str, self.current_tz) if start_str else None
-        end: datetime | None = self.parse_datetime(end_str, self.current_tz) if end_str else None
-
-        # 🔥 ここだけで意味を確定させる
-        if start is not None and self.is_date_only(start):
-            start = start.replace(hour=0, minute=0, second=0)
-
-        if end is not None and self.is_date_only(end):
-            end = end.replace(hour=23, minute=59, second=59)
-
-        # 🔥 UTC変換は最後に1回だけ
-        start_utc: datetime | None = self.to_utc_search_dt(start) if start else None
-        end_utc: datetime | None = self.to_utc_search_dt(end) if end else None
-
-        return start_utc, end_utc
-
     def apply_filter(self, _event: tk.Event | None = None) -> None:
         """フィルタに応じて表示内容を更新する"""
         # logger:"AppLogger" = get_logger()
@@ -666,6 +657,8 @@ class LogViewer:
         type_filter: str = self.type_var.get()
         search_text: str = self.search_var.get().strip()
         tz: str = self.current_tz
+        search_query: SearchQuery = parse_query(search_text, tz)
+        self.aggregate_result_var.set("")
 
         self.filtered_rows = []
 
@@ -673,11 +666,7 @@ class LogViewer:
         for item_id in self.tree.get_children():
             self.tree.delete(item_id)
 
-        # 🔹 メインループ
-        display_index = 0
-        
         for row in self.raw_rows:
-
             row_trace_id: str = self._get_log_trace_id(row)
             row_type: str = self._get_log_type(row)
 
@@ -689,11 +678,19 @@ class LogViewer:
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
 
-            if not match_search_query(row, search_text, tz):
+            if not match_search_query(row, search_query, tz):
                 continue
 
             # 🔹 表示
             self.filtered_rows.append(row)
+
+        self.filtered_rows = apply_result_modifiers(self.filtered_rows, search_query, tz)
+
+        # 🔹 表示
+        display_index = 0
+        for row in self.filtered_rows:
+            row_trace_id = self._get_log_trace_id(row)
+            row_type = self._get_log_type(row)
             self.tree.insert(
                 "",
                 "end",
@@ -707,6 +704,10 @@ class LogViewer:
                 tags=(row_type,),
             )
             display_index += 1
+
+        if search_query.aggregate is not None:
+            result = run_aggregate_query(self.filtered_rows, search_query.aggregate, tz)
+            self.aggregate_result_var.set(result.message)
 
 
     def _format_world_local_time(self, value: Any) -> str:

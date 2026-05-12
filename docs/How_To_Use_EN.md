@@ -115,7 +115,21 @@ Click a row → View detailed JSON
 
 #### 🔍 Search Text Box
 
-The Viewer search text box supports simple keyword search, field-specific search, and date/time range search.
+The Viewer search text box supports:
+
+- Basic keyword search,
+- Exact phrase search,
+- Date search,
+- Time search,
+- Date/time range search,
+- Field-specific search,
+- Regular expression search,
+- Similarity search,
+- Numeric comparison,
+- Boolean expressions,
+- Ignore rules,
+- Sort / top-N search,
+- Aggregate/statistical search.
 
 ##### ✅ Basic Search
 
@@ -189,6 +203,161 @@ context:gpu_mem_total_mb
 trace_id:fc036f388b7542c48117d55c8ec1728c
 ```
 
+Supported field aliases include:
+
+| Alias | Target |
+| ----- | ------ |
+| `level` | `level` |
+| `message`, `msg` | `what.message` |
+| `function`, `func` | `where.function` |
+| `file` | `where.file` |
+| `trace`, `trace_id` | `trace_id` |
+| `output` | `output` |
+| `context` | `context` |
+
+##### ✅ Exclude Search
+
+Prefix a term with `-` to hide logs that contain that term.
+
+```text
+cpu -gpu
+message:system -gpu
+```
+
+##### ✅ Exact Phrase Search
+
+Wrap text in double quotes to search for that exact phrase as one continuous string.
+
+```text
+"invalid log: missing trace_id"
+"system cpu"
+```
+
+##### ✅ Boolean Search
+
+Multiple terms are treated as `AND`. You can also use explicit `AND`, `OR`, and parentheses.
+
+```text
+level:WARNING message:system_cpu_percent
+level:ERROR OR level:CRITICAL
+(level:ERROR OR level:WARNING) -debug
+```
+
+##### ✅ Numeric Comparison Search
+
+Use comparison operators for numeric fields, especially values inside `context`.
+
+```text
+context.cpu_percent >=20
+context.gpu_mem_total_mb>1000
+context.cpu_percent <80
+```
+
+Supported operators:
+
+```text
+< <= > >= == !=
+```
+
+##### ✅ Ignore Rules
+
+Use `(ignore: ...)` to remove logs matching an ignore condition after the main search has selected candidates.
+
+```text
+cpu (ignore: context.cpu_percent <80)
+system (ignore: gpu)
+```
+
+##### ✅ Regular Expression Search
+
+Use `regex` for regular expression matching. You can search the whole flattened log, or one field.
+
+```text
+regex "^system_.*"
+regex message "^system_.*_status$"
+regex context "gpu_.*_mb"
+```
+
+Invalid regular expressions simply match no rows.
+
+##### ✅ Similarity Search
+
+Use `similar` to find logs whose text is close to the phrase, even when the words are not an exact keyword match.
+
+```text
+similar "GPU memory pressure"
+similar "reboot or clock jump symptoms"
+similar "GPU memory pressure" 0.12
+```
+
+This is an offline approximate search based on lightweight TF-IDF-style text features and character n-grams. It does not require an API key. Matching logs are displayed in similarity-score order unless you also specify an explicit `sort by`.
+
+The optional number after the phrase is the similarity threshold. Higher values are stricter.
+
+##### ✅ Sort / Top-N Search
+
+Use `sort by` to sort matching logs, or `top N by` to show only the highest N rows for a field.
+
+```text
+level:error sort by time desc
+message:system sort by context.cpu_percent desc
+top 3 by context.cpu_percent
+top 10 by time desc where level:error
+```
+
+If a log does not have the sort field, it is placed after logs that do.
+
+##### ✅ Aggregate / Statistical Search
+
+Aggregate search filters the log list to the rows used for the calculation, then displays the result next to the search box.
+
+Format:
+
+```text
+function field where condition
+```
+
+`where condition` is optional. It can use the same search syntax as normal searches, including date ranges and comparisons.
+
+Supported aggregate functions:
+
+```text
+count
+max
+min
+avg
+ave
+mean
+median
+mode
+```
+
+Examples:
+
+```text
+count * where level:error
+count * where 2026-04-23..2026-04-23
+max context.cpu_percent
+max context.cpu_percent where 2026-04-23..2026-04-23
+min context.cpu_percent where context.cpu_percent >=20
+avg context.cpu_percent
+ave context.cpu_percent
+mean context.cpu_percent
+median context.cpu_percent
+mode level
+group by level count *
+group by message avg context.cpu_percent
+```
+
+Notes:
+
+- `count *` counts matching logs.
+- `count field_name` counts values found in that field.
+- `max`, `min`, `avg`, `ave`, `mean`, and `median` require numeric values.
+- `mode` can be used with text fields such as `level`.
+- `group by field function target` calculates aggregate values per group.
+- When a field does not exist in a log, that log is not included in the aggregate result for that field.
+
 ##### ✅ Search Examples
 
 | Query | Meaning |
@@ -201,6 +370,16 @@ trace_id:fc036f388b7542c48117d55c8ec1728c
 | `message:test_error` | Logs whose message contains `test_error` |
 | `context:cpu_percent` | Logs that contain `cpu_percent` in context |
 | `trace_id:...` | Logs for a specific session |
+| `cpu -gpu` | Logs that contain `cpu` but do not contain `gpu` |
+| `"invalid log: missing trace_id"` | Logs that contain that exact phrase |
+| `regex message "^system_.*_status$"` | Logs whose message matches the regular expression |
+| `similar "GPU memory pressure"` | Logs that are approximately similar to that phrase |
+| `context.cpu_percent >=20` | Logs whose CPU percent is 20 or higher |
+| `level:ERROR OR level:CRITICAL` | Error or critical logs |
+| `top 3 by context.cpu_percent` | Top 3 logs by CPU percent |
+| `count * where level:error` | Count error logs and show those rows |
+| `avg context.cpu_percent` | Average CPU percent and show logs that contain that field |
+| `group by level count *` | Count logs per level |
 
 ##### ⚠️ Range Separator Notes
 

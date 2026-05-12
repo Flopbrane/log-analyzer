@@ -24,13 +24,13 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Final
 
 import logs.log_viewer as lv
 from logs.log_searcher import collect_logs, summarize
 from logs.log_types import LogDict
+from logs.search_text_analysis import parse_query
 
 print("DEBUG IMPORT:", lv.__file__)
 
@@ -48,6 +48,7 @@ class SearchCase:
     query: str
     expected: int
     note: str
+    expected_result_part: str = ""
 
 
 def find_default_log_files() -> list[Path]:
@@ -123,23 +124,24 @@ def run_one_case(viewer: lv.LogViewer, case: SearchCase) -> tuple[bool, int]:
     viewer.apply_filter()
 
     actual: int = len(viewer.tree.get_children())
+    result_text: str = viewer.aggregate_result_var.get()
     ok: bool = actual == case.expected
+    if case.expected_result_part:
+        ok = ok and case.expected_result_part in result_text
     return ok, actual
 
 
 def debug_range_parse(viewer: lv.LogViewer, query: str) -> str:
-    """範囲検索文字列を LogViewer.parse_range() がどう解釈しているか表示する。"""
+    """範囲検索文字列を検索Parserがどう解釈しているか表示する。"""
 
     if ".." not in query and " - " not in query:
         return ""
-    start: datetime | None = None
-    end: datetime | None = None
-    
+
     try:
-        start, end = viewer.parse_range(query)
-        return f"parse_range -> start={start!s}, end={end!s}"
+        parsed = parse_query(query, viewer.current_tz)
+        return f"parse_query -> start={parsed.start!s}, end={parsed.end!s}"
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        return f"parse_range ERROR -> {exc!r}"
+        return f"parse_query ERROR -> {exc!r}"
 
 
 def main() -> int:
@@ -192,18 +194,36 @@ def main() -> int:
         SearchCase("trace_id:fc036f388b7542c48117d55c8ec1728c", 3, "trace_id指定 ※現在のViewerが対応しているか確認"),
         SearchCase("cpu -gpu", 24, "gpuを除外したcpu検索"),
         SearchCase("message:system -gpu", 28, "gpu関連除外"),
-        SearchCase("level:warning message:system_cpu_percent", 11, "複数条件AND"),
-        SearchCase("context.cpu_percent >=20", 6, "CPU使用率20%以上"),
-        SearchCase("context.gpu_mem_total_mb>1000", 12, "GPUメモリ使用量"),
-        SearchCase("cpu (ignore: context.cpu_percent <80)", 6, "ignoreルール"),
+        SearchCase("level:warning message:system_cpu_percent", 0, "複数条件AND"),
+        SearchCase("context.cpu_percent >=20", 2, "CPU使用率20%以上"),
+        SearchCase("context.gpu_mem_total_mb>1000", 18, "GPUメモリ使用量"),
+        SearchCase("cpu (ignore: context.cpu_percent <80)", 0, "ignoreルール"),
         SearchCase("context.cpu_percent >=80", 0, "境界値 >=80"),
-        SearchCase("context.cpu_percent <80", 0, "境界値 <80"),
+        SearchCase("context.cpu_percent <80", 24, "境界値 <80"),
         SearchCase("context.invalid_key:abc", 0, "存在しないcontext"),
         SearchCase("level:", 0, "空field値"),
         SearchCase(":ERROR", 0, "空field名"),
         SearchCase("context.cpu_percent >>80", 0, "不正演算子"),
         SearchCase("2026-04-23 00:00", 0, "TZ変換境界"),
-        SearchCase("trace_id count", 5, "trace_idの総数を確認"),
+        SearchCase("trace_id count", 0, "通常検索では集計せずAND検索として扱う"),
+        SearchCase('"invalid log: missing trace_id"', 3, "引用符フレーズ検索"),
+        SearchCase('regex message "^system_.*_status$"', 18, "message正規表現検索"),
+        SearchCase('similar "GPU memory pressure"', 18, "TF-IDF/文字n-gram近似検索"),
+        SearchCase('similar "reboot or clock jump symptoms"', 4, "症状テキストの近似検索"),
+        SearchCase("level:error sort by time desc", 4, "検索結果を時刻降順で表示"),
+        SearchCase("top 3 by context.cpu_percent", 3, "CPU使用率上位3件"),
+        SearchCase("count * where level:error", 4, "ERROR件数集計", "count * = 4"),
+        SearchCase("count * where 2026-04-23..2026-04-23", 30, "範囲内ログ件数集計", "count * = 30"),
+        SearchCase("max context.cpu_percent", 24, "CPU最大値集計", "max context.cpu_percent = 23.5"),
+        SearchCase("max context.cpu_percent where 2026-04-23..2026-04-23", 12, "範囲内CPU最大値集計", "max context.cpu_percent = 23.5"),
+        SearchCase("min context.cpu_percent where context.cpu_percent >=20", 2, "条件付きCPU最小値集計", "min context.cpu_percent = 21.9"),
+        SearchCase("avg context.cpu_percent", 24, "CPU平均値集計", "avg context.cpu_percent = 7.5375"),
+        SearchCase("ave context.cpu_percent", 24, "CPU平均値集計 alias", "ave context.cpu_percent = 7.5375"),
+        SearchCase("mean context.cpu_percent", 24, "CPU平均値集計", "mean context.cpu_percent = 7.5375"),
+        SearchCase("median context.cpu_percent", 24, "CPU中央値集計", "median context.cpu_percent = 5.9"),
+        SearchCase("mode level", 69, "level最頻値集計", "mode level = INFO"),
+        SearchCase("group by level count *", 69, "level別件数集計", "INFO:50"),
+        SearchCase("group by message avg context.cpu_percent", 24, "message別CPU平均値集計", "system_cpu_percent:7.5375"),
     ]
 
     print("=== LogViewer.apply_filter() tests ===")
@@ -224,6 +244,8 @@ def main() -> int:
             f"[{status}] query={case.query!r:<54} "
             f"expected={case.expected:<3} actual={actual:<3} {case.note}"
         )
+        if case.expected_result_part:
+            print(f"     aggregate_result={viewer.aggregate_result_var.get()!r}")
 
         debug_text: str = debug_range_parse(viewer, case.query)
         if debug_text and not ok:

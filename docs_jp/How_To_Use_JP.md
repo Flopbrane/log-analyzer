@@ -112,7 +112,20 @@ python run_viewer.py
 
 ## 🟢 検索テキストボックスの使い方
 
-Log Viewer の検索テキストボックスには、文字列だけでなく、日付・時刻・期間・項目指定を入力できます。
+Log Viewer の検索テキストボックスには、
+ログの文字列だけでなく、
+
+- 日付・時刻
+- 期間
+- 項目指定
+- フレーズ完全一致
+- 正規表現検索
+- 類似検索
+- 数値比較
+- AND/OR条件
+- ignore条件
+- 並び替え・上位N件検索
+- 集計検索を入力できます。
 
 ---
 
@@ -270,7 +283,212 @@ trace_id:fc036f388b7542c48117d55c8ec1728c
 
 ---
 
-### 🔵 ⑨ よく使う検索例
+### 🔵 ⑨ 除外検索
+
+先頭に `-` を付けると、その単語を含むログを除外できます。
+
+```text
+cpu -gpu
+message:system -gpu
+```
+
+---
+
+### 🔵 ⑩ フレーズ完全一致検索
+
+`"` で囲むと、その文字列をひとまとまりのフレーズとして検索します。
+スペースや `:` を含む文字列をそのまま探したい場合に便利です。
+
+```text
+"invalid log: missing trace_id"
+"system cpu"
+```
+
+---
+
+### 🔵 ⑪ AND / OR 検索
+
+複数の条件を並べると、基本的には AND 条件として扱われます。
+明示的に `AND`、`OR`、括弧も使えます。
+
+```text
+level:WARNING message:system_cpu_percent
+level:ERROR OR level:CRITICAL
+(level:ERROR OR level:WARNING) -debug
+```
+
+---
+
+### 🔵 ⑫ 数値比較検索
+
+`context` 内の数値などに対して、比較条件を指定できます。
+
+```text
+context.cpu_percent >=20
+context.gpu_mem_total_mb>1000
+context.cpu_percent <80
+```
+
+使用できる演算子：
+
+```text
+< <= > >= == !=
+```
+
+---
+
+### 🔵 ⑬ ignore 条件
+
+`(ignore: 条件)` を付けると、通常検索で拾った候補から、指定条件に一致するログを除外できます。
+
+```text
+cpu (ignore: context.cpu_percent <80)
+system (ignore: gpu)
+```
+
+---
+
+### 🔵 ⑭ 正規表現検索
+
+`regex` を使うと、正規表現で検索できます。
+ログ全体を対象にすることも、特定フィールドだけを対象にすることもできます。
+
+```text
+regex "^system_.*"
+regex message "^system_.*_status$"
+regex context "gpu_.*_mb"
+```
+
+正しくない正規表現は、どのログにも一致しません。
+
+---
+
+### 🔵 ⑮ 類似検索
+
+`similar` を使うと、完全なキーワード一致ではなく、近い内容のログを検索できます。
+
+```text
+similar "GPU memory pressure"
+similar "reboot or clock jump symptoms"
+similar "GPU memory pressure" 0.12
+```
+
+現在の実装は、API Keyなしで動く TF-IDF 風の軽量特徴量 + 文字n-gram による近似検索です。
+OpenAI embeddings を使う本格的な意味検索は将来差し替え予定として、コード内にコメントアウトで残しています。
+
+引用符の後ろに数値を付けると、類似度しきい値を変更できます。
+数値を大きくすると厳しめ、小さくすると広めに拾います。
+明示的な `sort by` を付けない場合、近いログから順に表示されます。
+
+---
+
+### 🔵 ⑯ 並び替え・上位N件検索
+
+`sort by` を使うと検索結果を並び替えできます。
+`top N by` を使うと、指定フィールドの上位N件だけを表示できます。
+
+```text
+level:error sort by time desc
+message:system sort by context.cpu_percent desc
+top 3 by context.cpu_percent
+top 10 by time desc where level:error
+```
+
+並び替え対象のフィールドを持たないログは、フィールドを持つログの後ろに表示されます。
+
+---
+
+### 🔵 ⑰ 集計検索・統計検索
+
+検索窓から、ログの件数や数値の最大値・最小値・平均値・中央値・最頻値を確認できます。
+集計検索を使うと、集計対象になったログだけが一覧に表示され、検索欄の右側に集計結果が表示されます。
+
+基本形式：
+
+```text
+集計関数 対象フィールド where 条件
+```
+
+`where 条件` は省略できます。
+`where` の後ろには、通常検索と同じ構文を使えます。
+日付範囲や数値比較も指定できます。
+
+使用できる集計関数：
+
+```text
+count
+max
+min
+avg
+ave
+mean
+median
+mode
+```
+
+#### 件数を数える
+
+```text
+count * where level:error
+count * where 2026-04-23..2026-04-23
+```
+
+`count *` は、条件に一致したログ行数を数えます。
+
+#### 最大値・最小値
+
+```text
+max context.cpu_percent
+max context.cpu_percent where 2026-04-23..2026-04-23
+min context.cpu_percent where context.cpu_percent >=20
+```
+
+#### 平均値
+
+```text
+avg context.cpu_percent
+ave context.cpu_percent
+mean context.cpu_percent
+```
+
+`avg`、`ave`、`mean` は平均値として扱われます。
+
+#### 中央値
+
+```text
+median context.cpu_percent
+```
+
+#### 最頻値
+
+```text
+mode level
+group by level count *
+group by message avg context.cpu_percent
+```
+
+`mode` は `level` のような文字列項目にも使用できます。
+
+#### グループ別集計
+
+```text
+group by level count *
+group by message avg context.cpu_percent
+```
+
+`group by` を使うと、指定したフィールドごとに集計結果を分けて表示できます。
+
+#### 集計検索の注意
+
+- `max`、`min`、`avg`、`ave`、`mean`、`median` は数値に対して使用します。
+- `mode` は文字列にも使用できます。
+- `group by フィールド 集計関数 対象フィールド` でグループ別集計できます。
+- 対象フィールドが存在しないログは、集計対象から外れます。
+- 集計検索時も、一覧には集計に使われたログが表示されます。
+
+---
+
+### 🔵 ⑱ よく使う検索例
 
 ```text
 2026-04-23
@@ -280,6 +498,16 @@ level:ERROR
 message:test_error
 context:cpu_percent
 file:system_monitor.py
+cpu -gpu
+"invalid log: missing trace_id"
+regex message "^system_.*_status$"
+similar "GPU memory pressure"
+context.cpu_percent >=20
+level:ERROR OR level:CRITICAL
+top 3 by context.cpu_percent
+count * where level:error
+avg context.cpu_percent
+group by level count *
 ```
 
 ---
@@ -290,6 +518,15 @@ file:system_monitor.py
 - `level:` や `message:` が付くと項目指定検索
 - `..` が含まれると期間検索
 - ` - ` は互換用の期間検索
+- `-gpu` のように `-` が先頭に付くと除外検索
+- `"..."` で囲むとフレーズ完全一致検索
+- `AND` / `OR` / 括弧で条件検索
+- `regex` で始まると正規表現検索
+- `similar` で始まると類似検索
+- `context.cpu_percent >=20` のように書くと数値比較検索
+- `sort by` / `top N by` で並び替え・上位N件検索
+- `count`、`max`、`avg` などで始まると集計検索
+- `group by` でグループ別集計検索
 - 空欄にすると全件表示
 
 ---
@@ -389,4 +626,4 @@ logger.info("cpu_usage", context={"cpu": 30})
 - 出力ツールではなく
 - 状態監視・解析ツール
 
-として設計されている。
+として設計されています。
