@@ -1,4 +1,13 @@
 {
+
+        "python.defaultInterpreterPath": "D:\\Dev\\venvs\\.venv-logger312\\Scripts\\python.exe",
+        "python-envs.pythonProjects": [
+            {
+                "path": "${workspaceFolder}",
+                "envManager": "ms-python.python:venv",
+                "packageManager": "ms-python.python:pip"
+            }
+        ],
     "python.analysis.extraPaths": [
         "D:/PC/Python/logger_project"
     ]
