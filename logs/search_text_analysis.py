@@ -12,7 +12,6 @@ import re
 import shlex
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import cast
-
 from zoneinfo import ZoneInfo
 
 from logs.search_ast import (

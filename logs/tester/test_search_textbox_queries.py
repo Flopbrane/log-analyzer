@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import json
+import re
+import sys
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Iterable, cast
+from zoneinfo import ZoneInfo
+
+"""LogViewer の検索テキストボックス用テストスクリプト。"""
+
+#########################
+# Author: F.Kurokawa
+# Description: LogViewer の検索テキストボックスに入力された文字列を解析するテストスクリプト。
+# LogViewer の検索テキストボックスに入力された文字列を解析するテストスクリプト。
+#########################
 """LogViewer の検索テキストボックス用テストスクリプト。
 
 目的:
@@ -12,17 +30,6 @@
 または、任意のログファイルを指定:
     python test_search_textbox_queries.py alarm_2026-04-22.jsonl alarm_2026-04-23.jsonl alarm_2026-04-24.jsonl
 """
-from __future__ import annotations
-
-import json
-import re
-import sys
-from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Iterable, cast
-
-from zoneinfo import ZoneInfo
 
 # =========================================
 # 設定
