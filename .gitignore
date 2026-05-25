@@ -33,6 +33,7 @@ _tzinfo_data/
 .vscode/
 *.code-workspace
 contents_class_def/
+.ruff_cache/
 
 # =========================
 # 🪟 OS関連
