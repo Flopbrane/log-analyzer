@@ -11,36 +11,49 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 import subprocess
 import tkinter as tk
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Final
+from typing import Any, Final, cast
 
-from logs.display_formatter import LogRenderer
-from logs.log_paths import LOGS_DIR
-from logs.log_searcher import collect_logs, summarize
-from logs.log_storage import load_log
-from logs.log_types import Event, LogDict, LogWhere
-from logs.log_validator import validate_log
-from logs.openai_key_store import (
+from logger_window.logs.display_formatter import LogRenderer
+from logger_window.logs.language_selector import (
+    LanguageCode,
+    build_timezone_label,
+    normalize_language,
+    translate,
+    translate_timezone_area,
+)
+from logger_window.logs.log_app import get_logger
+from logger_window.logs.log_config import load_viewer_config, save_viewer_config
+from logger_window.logs.log_multi_select import LogFileSelector
+from logger_window.logs.log_paths import LOGS_DIR
+from logger_window.logs.log_searcher import collect_logs, summarize
+from logger_window.logs.log_storage import load_log
+from logger_window.logs.log_types import Event, LogDict, LogWhere
+from logger_window.logs.log_validator import validate_log
+from logger_window.logs.multi_info_logger import AppLogger
+from logger_window.logs.openai_key_store import (
     delete_openai_api_key,
     has_openai_api_key,
     is_keyring_available,
     save_openai_api_key,
 )
-from logs.search_matcher import (
+from logger_window.logs.search_matcher import (
     apply_result_modifiers,
     match_search_query,
     run_aggregate_query,
 )
-from logs.search_models import SearchQuery
-from logs.search_text_analysis import parse_query
-from logs.time_utils import (
+from logger_window.logs.search_models import AggregateResult, SearchQuery
+from logger_window.logs.search_text_analysis import parse_query
+from logger_window.logs.search_text_preprocessor import build_search_text_datetime
+from logger_window.logs.time_utils import (
     to_world_local_datetime,
 )
-from logs.tzinfo_formatter import (
+from logger_window.logs.tzinfo_formatter import (
     TimeZoneData,
     TimeZoneItem,
     build_timezone_data,
@@ -49,74 +62,6 @@ from logs.tzinfo_formatter import (
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
 
-class LogFileSelector:
-    """ログファイル一覧を表示し、複数選択させるダイアログ"""
-
-    def __init__(self, parent: WindowWidget, log_dir: Path) -> None:
-        self.parent = parent
-        self.log_dir: Path = log_dir
-
-    def show(self) -> list[Path] | None:
-        """ログファイル一覧を表示し、選択結果を返す"""
-        window = tk.Toplevel(self.parent)
-        window.title("ログ選択")
-        window.geometry("700x500")
-        window.transient(self.parent) # window系のプロパティなので、Frameが入るとエラーになる
-        window.grab_set()
-
-        files: list[Path] = sorted(
-            list(self.log_dir.glob("*.jsonl")) +
-            list(self.log_dir.glob("*.log")),
-            key=lambda p: p.name
-        )
-
-        if not files:
-            tk.Label(window, text="ログファイルが見つかりません").pack(
-                padx=12,
-                pady=12,
-                anchor="w",
-            )
-            tk.Button(window, text="閉じる", command=window.destroy).pack(pady=8)
-            window.wait_window()
-            return None
-
-        listbox = tk.Listbox(
-            window,
-            selectmode=tk.MULTIPLE,
-            width=100,
-            height=20,
-            exportselection=False,
-        )
-        listbox.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
-
-        for file_path in files:
-            listbox.insert(tk.END, file_path.name)
-
-        selected_paths: list[Path] = []
-
-        def on_open() -> None:
-            """選択したLog_Pathを読み込む"""
-            indices: tuple[int, ...] = listbox.curselection() # type: ignore
-            for index in indices:  # type: ignore
-                selected_paths.append(files[index])
-            window.destroy()
-
-        def on_cancel() -> None:
-            """キャンセルボタン処理"""
-            window.destroy()
-
-        button_frame = tk.Frame(window)
-        button_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
-
-        tk.Button(button_frame, text="開く", command=on_open).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="キャンセル", command=on_cancel).pack(
-            side=tk.LEFT,
-            padx=8,
-        )
-
-        window.wait_window()
-        return selected_paths if selected_paths else None
-
 
 class LogViewer:
     """ログファイルを表示するGUI"""
@@ -124,19 +69,30 @@ class LogViewer:
     TRACE_ALL: Final[str] = "trace.id_ALL"
     TYPE_ALL: Final[str] = "type_ALL"
 
-    def __init__(self, parent: tk.Tk, initial_log_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        parent: tk.Tk,
+        initial_log_path: Path | None = None,
+        logger: AppLogger | None = None,
+        language: LanguageCode = "ja",
+    ) -> None:
         self.root: tk.Tk = parent
-        self.root.title("Log Viewer")
-        self.root.geometry("1200x650+100+100")
+        self.viewer_config: dict[str, Any] = load_viewer_config()
+        self.language: LanguageCode = normalize_language(
+            str(self.viewer_config.get("language", language))
+        )
+        self.root.title(self._t("viewer_title"))
+        self.root.geometry(self._load_window_geometry())
+        self.root.protocol("WM_DELETE_WINDOW", self.exit_app)
         # 基本設定
         self.log_dir: Path = LOGS_DIR
-
+        self.logger: AppLogger = logger or get_logger()
         # ----元ログ (raw)----
         self.raw_rows: list[LogDict] = []
         # ----検索後ログ (filtered)----
         self.filtered_rows: list[LogDict] = []
         # ----表示用Event (rows)----
-        self.rows: list[Event] = []
+        self.event_rows: list[Event] = []
 
         # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
@@ -152,12 +108,25 @@ class LogViewer:
         self.trace_dropdown: ttk.Combobox
         self.type_dropdown: ttk.Combobox
         self.tree: ttk.Treeview
+        self.area_label: tk.Label
+        self.city_label: tk.Label
+        self.open_log_button: tk.Button
+        self.open_logs_button: tk.Button
+        self.reset_filters_button: tk.Button
+        self.trace_label: tk.Label
+        self.type_label: tk.Label
+        self.search_label: tk.Label
+        self.search_button: tk.Button
         self.search_var = tk.StringVar()
         self.aggregate_result_var = tk.StringVar()
 
         # ===== TimeZoneデータ =====
         self.tz_data: TimeZoneData = build_timezone_data()
-        self.current_tz: str = "Asia/Tokyo"
+        self.current_tz: str = self._load_timezone()
+        self.current_area: str = self.current_tz.split("/", 1)[0]
+        self._area_label_to_area: dict[str, str] = {}
+        self._tz_label_to_zone: dict[str, str] = {}
+        self.last_log_paths: list[Path] = []
         # area
         self.area_var = tk.StringVar()
         # city
@@ -167,9 +136,205 @@ class LogViewer:
         # ===== 全体UI構築 =====
         self._build_ui()
 
+        def get_latest_log_file(log_dir: Path) -> Path | None:
+            """最新ログ取得"""
 
-        if initial_log_path is not None:
+            log_files: list[Path] = sorted(
+                [
+                    p
+                    for p in (
+                        list(log_dir.glob("*.jsonl"))
+                        + list(log_dir.glob("*.log"))
+                    )
+                    if p.stat().st_size > 0
+                ],
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+
+            return log_files[0] if log_files else None
+
+        
+        configured_log_paths: list[Path] = self._load_log_paths_from_config()
+        loaded_configured_logs = False
+        if initial_log_path is None and configured_log_paths:
+            if len(configured_log_paths) == 1:
+                initial_log_path = configured_log_paths[0]
+            else:
+                logs: list[LogDict] = collect_logs(configured_log_paths)
+                self.raw_rows = logs
+                self.event_rows = summarize(logs)
+                self.last_log_paths = configured_log_paths
+                self.update_filters()
+                self.apply_filter()
+                loaded_configured_logs = True
+
+        latest_log: Path | None = get_latest_log_file(self.log_dir)
+        print(f"DEBUG latest_log: {latest_log}")
+        if not loaded_configured_logs and initial_log_path is None and latest_log is not None:
+            initial_log_path = latest_log
+
+        if not loaded_configured_logs and initial_log_path is not None:
             self.reload_log(initial_log_path)
+
+    def _load_window_geometry(self) -> str:
+        """設定ファイルからウィンドウ位置/サイズを取得する。"""
+        geometry = self.viewer_config.get("window_geometry")
+        if isinstance(geometry, str) and geometry:
+            return geometry
+        return "1200x650+100+100"
+
+    def _load_timezone(self) -> str:
+        """設定ファイルからTimezoneを取得する。"""
+        timezone_name = self.viewer_config.get("timezone")
+        if isinstance(timezone_name, str) and timezone_name in {
+            item.zone
+            for items in self.tz_data.area_map.values()
+            for item in items
+        }:
+            return timezone_name
+
+        area = self.viewer_config.get("timezone_area")
+        city = self.viewer_config.get("timezone_city")
+        if isinstance(area, str) and isinstance(city, str):
+            legacy_timezone = f"{area}/{city}"
+            if legacy_timezone in {
+                item.zone
+                for items in self.tz_data.area_map.values()
+                for item in items
+            }:
+                return legacy_timezone
+
+        return "Asia/Tokyo" if "Asia" in self.tz_data.area_map else self.tz_data.area_list[0]
+
+    def _load_log_paths_from_config(self) -> list[Path]:
+        """設定ファイルから前回開いていたログファイル一覧を取得する。"""
+        paths_value: Any | None = self.viewer_config.get("last_log_paths")
+        if not isinstance(paths_value, list):
+            legacy_path: Any | None = self.viewer_config.get("last_log_path")
+            paths_value = [legacy_path] if isinstance(legacy_path, str) else []
+
+        paths: list[Path] = []
+        for value in paths_value:
+            if not isinstance(value, str):
+                continue
+            path = Path(value)
+            if path.exists() and path.is_file():
+                paths.append(path)
+        return paths
+
+    def _save_current_config(self) -> None:
+        """現在のViewer設定をJSONへ保存する。"""
+        config: dict[str, Any] = dict(self.viewer_config)
+        area:str
+        city:str
+        area, city = (
+            self.current_tz.split("/", 1)
+            if "/" in self.current_tz
+            else (self.current_tz, "")
+        )
+        config.update(
+            {
+                "language": self.language,
+                "timezone": self.current_tz,
+                "timezone_area": area,
+                "timezone_city": city,
+                "window_geometry": self.root.geometry(),
+                "last_log_paths": [str(path) for path in self.last_log_paths],
+            }
+        )
+        save_viewer_config(config)
+        self.viewer_config = config
+
+    def _t(self, key: str) -> str:
+        """現在の表示言語に合わせたUI文字列を返す。"""
+        return translate(key, self.language)
+
+    def set_language(self, language: LanguageCode) -> None:
+        """LogViewerの操作UI表示言語を切り替える。"""
+        self.language = language
+        self._build_menu()
+        self._refresh_ui_text()
+        self._refresh_timezone_dropdown()
+
+    def set_timezone(self, timezone_name: str) -> None:
+        """表示TimezoneをIANA名で切り替える。"""
+        if "/" not in timezone_name:
+            return
+        area = timezone_name.split("/", 1)[0]
+        if area not in self.tz_data.area_map:
+            return
+        if not any(item.zone == timezone_name for item in self.tz_data.area_map[area]):
+            return
+        self.current_tz = timezone_name
+        self.current_area = area
+        self._refresh_timezone_dropdown()
+
+    def _refresh_ui_text(self) -> None:
+        """既に作成済みの操作UI文字列を更新する。"""
+        self.root.title(self._t("viewer_title"))
+        self.area_label.config(text=self._t("label_area"))
+        self.city_label.config(text=self._t("label_city"))
+        self.open_log_button.config(text=self._t("button_open_single_log"))
+        self.open_logs_button.config(text=self._t("button_open_multiple_logs"))
+        self.reset_filters_button.config(text=self._t("button_reset_filters"))
+        self.trace_label.config(text=self._t("label_trace"))
+        self.type_label.config(text=self._t("label_type"))
+        self.search_label.config(text=self._t("label_search"))
+        self.search_button.config(text=self._t("button_search"))
+        self.tree.heading("type", text=self._t("column_type"))
+        self.tree.heading("time", text=self._t("column_time"))
+        self.tree.heading("trace_id", text=self._t("column_trace_id"))
+        self.tree.heading("message", text=self._t("column_message"))
+
+    def _area_label(self, area: str) -> str:
+        """現在の表示言語に合わせたTimezoneエリア名を返す。"""
+        return translate_timezone_area(area, self.language)
+
+    def _tz_label(self, item: TimeZoneItem) -> str:
+        """現在の表示言語に合わせたTimezone都市名を返す。"""
+        return build_timezone_label(item.zone, self.language)
+
+    def _refresh_timezone_dropdown(self) -> None:
+        """Timezoneドロップダウンの表示言語を更新する。"""
+        if not hasattr(self, "area_combo") or not hasattr(self, "city_combo"):
+            return
+
+        self._area_label_to_area = {
+            self._area_label(area): area
+            for area in self.tz_data.area_list
+        }
+        self.area_combo["values"] = list(self._area_label_to_area.keys())
+        self.area_var.set(self._area_label(self.current_area))
+        self._set_timezone_city_values(self.current_area, self.current_tz)
+
+    def _set_timezone_city_values(
+        self,
+        area: str,
+        selected_zone: str | None = None,
+    ) -> None:
+        """選択中エリアに合わせて都市リストを更新する。"""
+        items: list[TimeZoneItem] = self.tz_data.area_map.get(area, [])
+        self._tz_label_to_zone = {
+            self._tz_label(item): item.zone
+            for item in items
+        }
+        labels: list[str] = list(self._tz_label_to_zone.keys())
+        self.city_combo["values"] = labels
+
+        if not labels:
+            self.tz_var.set("")
+            return
+
+        selected_label: str = next(
+            (
+                self._tz_label(item)
+                for item in items
+                if item.zone == selected_zone
+            ),
+            labels[0],
+        )
+        self.tz_var.set(selected_label)
 
     # =======================
     # TZ DropDown List
@@ -186,14 +351,21 @@ class LogViewer:
         # ======================
         # Area
         # ======================
-        tk.Label(frame, text="Area:").pack(side=tk.LEFT)
+        self.area_label = tk.Label(frame, text=self._t("label_area"))
+        self.area_label.pack(side=tk.LEFT)
 
-        self.area_var.set("Asia")
+        if self.current_area not in self.tz_data.area_map:
+            self.current_area = "Asia" if "Asia" in self.tz_data.area_map else self.tz_data.area_list[0]
+        self.area_var.set(self._area_label(self.current_area))
+        self._area_label_to_area = {
+            self._area_label(area): area
+            for area in self.tz_data.area_list
+        }
 
         self.area_combo = ttk.Combobox(
             frame,
             textvariable=self.area_var,
-            values=self.tz_data.area_list,
+            values=list(self._area_label_to_area.keys()),
             state="readonly",
             width=15,
         )
@@ -203,23 +375,13 @@ class LogViewer:
         # ======================
         # City
         # ======================
-        tk.Label(frame, text="City:").pack(side=tk.LEFT)
-
-        asia_items: list[TimeZoneItem] = self.tz_data.area_map["Asia"]
-
-        tz_labels: list[str] = [item.label for item in asia_items]
-
-        self.tz_var.set(
-            next(
-                (item.label for item in asia_items if item.zone == "Asia/Tokyo"),
-                tz_labels[0],
-            )
-        )
+        self.city_label = tk.Label(frame, text=self._t("label_city"))
+        self.city_label.pack(side=tk.LEFT)
 
         self.city_combo = ttk.Combobox(
             frame,
             textvariable=self.tz_var,
-            values=tz_labels,
+            values=[],
             state="readonly",
             width=35,
         )
@@ -238,26 +400,19 @@ class LogViewer:
             "<<ComboboxSelected>>",
             self._on_timezone_changed,
         )
+        self._set_timezone_city_values(self.current_area, self.current_tz)
 
     def _on_area_changed(
         self,
         _event: tk.Event,
     ) -> None:
         """Area変更時"""
-        selected_area: str = self.area_var.get()
-        items: list[TimeZoneItem] = (
-            self.tz_data.area_map.get(
-                selected_area,
-                [],
-            )
+        selected_area_label: str = self.area_var.get()
+        selected_area: str = (
+            self._area_label_to_area.get(selected_area_label, selected_area_label)
         )
-        labels: list[str] = [
-            item.label
-            for item in items
-        ]
-        self.city_combo["values"] = labels
-        if labels:
-            self.tz_var.set(labels[0])
+        self.current_area = selected_area
+        self._set_timezone_city_values(selected_area)
         self._on_timezone_changed(_event)
 
     def _on_timezone_changed(
@@ -268,11 +423,10 @@ class LogViewer:
 
         selected_label: str = self.tz_var.get()
 
-        for items in self.tz_data.area_map.values():
-            for item in items:
-                if item.label == selected_label:
-                    self.current_tz = item.zone
-                    break
+        self.current_tz = self._tz_label_to_zone.get(
+            selected_label,
+            self.current_tz,
+        )
 
         # 👉 ここで再描画（重要）
         self.apply_filter()
@@ -290,9 +444,12 @@ class LogViewer:
         top_frame = tk.Frame(self.root)
         top_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        tk.Button(top_frame, text="単一ログを開く", command=self.open_log_file).pack(side=tk.LEFT)
-        tk.Button(top_frame, text="複数ログを開く", command=self.open_logs).pack(side=tk.LEFT, padx=8)
-        tk.Button(top_frame, text="フィルタ解除", command=self.reset_filters).pack(side=tk.LEFT)
+        self.open_log_button = tk.Button(top_frame, text=self._t("button_open_single_log"), command=self.open_log_file)
+        self.open_log_button.pack(side=tk.LEFT)
+        self.open_logs_button = tk.Button(top_frame, text=self._t("button_open_multiple_logs"), command=self.open_logs)
+        self.open_logs_button.pack(side=tk.LEFT, padx=8)
+        self.reset_filters_button = tk.Button(top_frame, text=self._t("button_reset_filters"), command=self.reset_filters)
+        self.reset_filters_button.pack(side=tk.LEFT)
         #=====Timezone Dropdown=====
         self._build_timezone_dropdown(top_frame)
         # =========================
@@ -301,7 +458,8 @@ class LogViewer:
         filter_frame = tk.Frame(self.root)
         filter_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
 
-        tk.Label(filter_frame, text="TRACE").pack(side=tk.LEFT)
+        self.trace_label = tk.Label(filter_frame, text=self._t("label_trace"))
+        self.trace_label.pack(side=tk.LEFT)
         self.trace_dropdown = ttk.Combobox(
             filter_frame,
             textvariable=self.trace_var,
@@ -311,7 +469,8 @@ class LogViewer:
         self.trace_dropdown.pack(side=tk.LEFT, padx=(4, 12))
         self.trace_dropdown.bind("<<ComboboxSelected>>", self.apply_filter)
 
-        tk.Label(filter_frame, text="TYPE").pack(side=tk.LEFT)
+        self.type_label = tk.Label(filter_frame, text=self._t("label_type"))
+        self.type_label.pack(side=tk.LEFT)
         self.type_dropdown = ttk.Combobox(
             filter_frame,
             textvariable=self.type_var,
@@ -321,14 +480,16 @@ class LogViewer:
         self.type_dropdown.pack(side=tk.LEFT, padx=(4, 12))
         self.type_dropdown.bind("<<ComboboxSelected>>", self.apply_filter)
 
-        tk.Label(filter_frame, text="SEARCH").pack(side=tk.LEFT)
+        self.search_label = tk.Label(filter_frame, text=self._t("label_search"))
+        self.search_label.pack(side=tk.LEFT)
         tk.Entry(
             filter_frame,
             textvariable=self.search_var,
             width=30,
         ).pack(side=tk.LEFT, padx=(4, 12))
 
-        tk.Button(filter_frame, text="検索", command=self.apply_filter).pack(side=tk.LEFT)
+        self.search_button = tk.Button(filter_frame, text=self._t("button_search"), command=self.apply_filter)
+        self.search_button.pack(side=tk.LEFT)
         tk.Label(
             filter_frame,
             textvariable=self.aggregate_result_var,
@@ -360,10 +521,10 @@ class LogViewer:
         # =========================
         # 🔹 カラム設定
         # =========================
-        self.tree.heading("type", text="TYPE")
-        self.tree.heading("time", text="TIME")
-        self.tree.heading("trace_id", text="TRACE_ID")
-        self.tree.heading("message", text="MESSAGE")
+        self.tree.heading("type", text=self._t("column_type"))
+        self.tree.heading("time", text=self._t("column_time"))
+        self.tree.heading("trace_id", text=self._t("column_trace_id"))
+        self.tree.heading("message", text=self._t("column_message"))
 
         self.tree.column("type", width=120, anchor="w")
         self.tree.column("time", width=180, anchor="w")
@@ -433,29 +594,34 @@ class LogViewer:
         menu_bar = tk.Menu(self.root)
         app_menu = tk.Menu(menu_bar, tearoff=False)
         app_menu.add_command(
-            label="OPEN API Keyの登録",
+            label=self._t("menu_register_api_key"),
             command=self.open_openai_api_key_dialog,
         )
-        app_menu.add_command(label="オプション", command=self.open_options_dialog)
+        app_menu.add_command(label=self._t("menu_options"), command=self.open_options_dialog)
         app_menu.add_separator()
-        app_menu.add_command(label="終了", command=self.exit_app)
+        app_menu.add_command(label=self._t("menu_exit"), command=self.exit_app)
 
-        menu_bar.add_cascade(label="メニュー", menu=app_menu)
+        language_menu = tk.Menu(menu_bar, tearoff=False)
+        language_menu.add_command(label=self._t("language_japanese"), command=lambda: self.set_language("ja"))
+        language_menu.add_command(label=self._t("language_english"), command=lambda: self.set_language("en"))
+
+        menu_bar.add_cascade(label=self._t("menu_app"), menu=app_menu)
+        menu_bar.add_cascade(label=self._t("menu_language"), menu=language_menu)
         self.root.config(menu=menu_bar)
 
     def open_openai_api_key_dialog(self) -> None:
         """OpenAI API Key登録ダイアログを開く。"""
         window = tk.Toplevel(self.root)
-        window.title("OPEN API Keyの登録")
+        window.title(self._t("dialog_api_key_title"))
         window.geometry("520x220")
         window.resizable(False, False)
         window.transient(self.root)
         window.grab_set()
 
-        status_text = (
-            "登録済みです。保存し直すか、削除できます。"
+        status_text: str = (
+            self._t("dialog_api_key_saved_status")
             if has_openai_api_key()
-            else "未登録です。高精度な意味検索を使う場合のみ登録してください。"
+            else self._t("dialog_api_key_missing_status")
         )
 
         tk.Label(window, text=status_text, anchor="w").pack(
@@ -465,7 +631,7 @@ class LogViewer:
         )
         tk.Label(
             window,
-            text="API KeyはScriptには保存せず、このPCの資格情報ストアへ保存します。",
+            text=self._t("dialog_api_key_storage_note"),
             anchor="w",
             fg="#555555",
         ).pack(fill=tk.X, padx=16, pady=(0, 10))
@@ -473,7 +639,7 @@ class LogViewer:
         input_frame = tk.Frame(window)
         input_frame.pack(fill=tk.X, padx=16)
 
-        tk.Label(input_frame, text="API Key").pack(side=tk.LEFT)
+        tk.Label(input_frame, text=self._t("dialog_api_key_label")).pack(side=tk.LEFT)
         key_var = tk.StringVar()
         key_entry = tk.Entry(input_frame, textvariable=key_var, show="*", width=54)
         key_entry.pack(side=tk.LEFT, padx=(8, 0), fill=tk.X, expand=True)
@@ -483,67 +649,69 @@ class LogViewer:
         button_frame.pack(fill=tk.X, padx=16, pady=18)
 
         def on_save() -> None:
-            api_key = key_var.get().strip()
+            api_key: str = key_var.get().strip()
             if not api_key:
-                messagebox.showwarning("入力確認", "API Keyを入力してください。", parent=window)
+                messagebox.showwarning(self._t("dialog_input_check"), self._t("dialog_api_key_required"), parent=window)
                 return
             if not is_keyring_available():
                 messagebox.showerror(
-                    "keyringが必要です",
-                    "安全に保存するため、keyringをインストールしてください。\n\npip install keyring",
+                    self._t("dialog_keyring_required_title"),
+                    self._t("dialog_keyring_required_save"),
                     parent=window,
                 )
                 return
             save_openai_api_key(api_key)
-            messagebox.showinfo("保存完了", "API KeyをこのPCに保存しました。", parent=window)
+            messagebox.showinfo(self._t("dialog_save_complete"), self._t("dialog_api_key_saved"), parent=window)
             window.destroy()
 
         def on_delete() -> None:
             if not is_keyring_available():
                 messagebox.showerror(
-                    "keyringが必要です",
-                    "keyringが無いため資格情報ストアを操作できません。",
+                    self._t("dialog_keyring_required_title"),
+                    self._t("dialog_keyring_required_delete"),
                     parent=window,
                 )
                 return
             delete_openai_api_key()
-            messagebox.showinfo("削除完了", "保存済みAPI Keyを削除しました。", parent=window)
+            messagebox.showinfo(self._t("dialog_delete_complete"), self._t("dialog_api_key_deleted"), parent=window)
             window.destroy()
 
-        tk.Button(button_frame, text="保存", command=on_save).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="削除", command=on_delete).pack(side=tk.LEFT, padx=8)
-        tk.Button(button_frame, text="キャンセル", command=window.destroy).pack(side=tk.RIGHT)
+        tk.Button(button_frame, text=self._t("button_save"), command=on_save).pack(side=tk.LEFT)
+        tk.Button(button_frame, text=self._t("button_delete"), command=on_delete).pack(side=tk.LEFT, padx=8)
+        tk.Button(button_frame, text=self._t("button_cancel"), command=window.destroy).pack(side=tk.RIGHT)
 
         window.wait_window()
 
     def open_options_dialog(self) -> None:
         """検索オプションダイアログを開く。"""
         window = tk.Toplevel(self.root)
-        window.title("オプション")
+        window.title(self._t("dialog_options_title"))
         window.geometry("520x180")
         window.resizable(False, False)
         window.transient(self.root)
         window.grab_set()
 
-        key_status = "登録済み" if has_openai_api_key() else "未登録"
-        messages = [
-            "現在の similar 検索: ローカル近似検索",
-            f"OPEN API Key: {key_status}",
-            "Key未登録時はAPIを使わず、TF-IDF/文字n-gram近似検索で動作します。",
-            "embeddingsによる高精度検索は将来の切替予定です。",
+        key_status: str = self._t("option_api_key_registered") if has_openai_api_key() else self._t("option_api_key_missing")
+        messages: list[str] = [
+            self._t("option_similar_search"),
+            self._t("option_api_key_status").format(status=key_status),
+            self._t("option_local_similarity_note"),
+            self._t("option_embeddings_future"),
         ]
         for message in messages:
             tk.Label(window, text=message, anchor="w").pack(fill=tk.X, padx=16, pady=3)
 
-        tk.Button(window, text="閉じる", command=window.destroy).pack(pady=14)
+        tk.Button(window, text=self._t("button_close"), command=window.destroy).pack(pady=14)
         window.wait_window()
 
     def exit_app(self) -> None:
         """アプリを終了する。"""
+        self._save_current_config()
         self.root.destroy()
 
     def reload_log(self, path: Path) -> None:
         """単一ログファイルを再読み込み"""
+        self.last_log_paths = [path]
 
         # ① 生ログ（dict）
         raw_logs: list[dict[str, Any]] = load_log(path)
@@ -560,7 +728,7 @@ class LogViewer:
 
         # ③ Viewerにセット
         self.raw_rows = safe_logs
-        self.rows = events
+        self.event_rows: list[Event] = events
 
         self.update_filters()
         self.apply_filter()
@@ -569,7 +737,7 @@ class LogViewer:
         """ファイルダイアログから単一ログを開く"""
 
         file_path_str: str = filedialog.askopenfilename(
-            title="ログファイルを選択",
+            title=self._t("dialog_select_log_file"),
             initialdir=str(self.log_dir),
             filetypes=[("Log Files", "*.jsonl *.log"), ("All Files", "*.*")],
         )
@@ -581,7 +749,8 @@ class LogViewer:
         logs: list[LogDict] = collect_logs([Path(file_path_str)])
 
         self.raw_rows = logs
-        self.rows = summarize(logs)
+        self.event_rows = summarize(logs)
+        self.last_log_paths = [Path(file_path_str)]
         self.update_filters()
         self.apply_filter()
 
@@ -598,7 +767,8 @@ class LogViewer:
 
         # 🔹 Viewerは表示だけ
         self.raw_rows = logs
-        self.rows = summarize(logs)
+        self.event_rows = summarize(logs)
+        self.last_log_paths = paths
         self.update_filters()
         self.apply_filter()
 
@@ -650,6 +820,15 @@ class LogViewer:
         """LogDictからlevel取得"""
         return row["level"]
 
+
+    def _searchtext_datetime_builder(
+        self,
+        search_text: str,
+    ) -> str:
+        """時間だけの検索文字列をdatetime形式へ補完する"""
+        return build_search_text_datetime(search_text, self.raw_rows, self.current_tz)
+
+
     def apply_filter(self, _event: tk.Event | None = None) -> None:
         """フィルタに応じて表示内容を更新する"""
         # logger:"AppLogger" = get_logger()
@@ -657,14 +836,24 @@ class LogViewer:
         type_filter: str = self.type_var.get()
         search_text: str = self.search_var.get().strip()
         tz: str = self.current_tz
+        search_text = self._searchtext_datetime_builder(search_text)
         search_query: SearchQuery = parse_query(search_text, tz)
         self.aggregate_result_var.set("")
-
         self.filtered_rows = []
 
+        # debag用
+        self.logger.debug(
+            "apply_filter start",
+            context={
+                "start_time": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                "search": search_text,
+                "raw_rows": len(self.raw_rows),
+                "event_rows": len(self.event_rows),
+            },
+        )
+
         # 🔹 画面クリア
-        for item_id in self.tree.get_children():
-            self.tree.delete(item_id)
+        self.tree.delete(*self.tree.get_children())
 
         for row in self.raw_rows:
             row_trace_id: str = self._get_log_trace_id(row)
@@ -677,14 +866,45 @@ class LogViewer:
             # 🔹 TYPEフィルタ
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
-
-            if not match_search_query(row, search_text, tz):
+            
+            # debag用
+            # print(f"search_query: {search_query}")
+            # print(f"time: {row['time']}")
+            # print(f"row: {row}")
+            # print(f"match_search_query: {match_search_query(row, search_query, tz)}")
+            
+            if not match_search_query(row, search_query, tz):
                 continue
 
             # 🔹 表示
             self.filtered_rows.append(row)
 
+        # debag用
+        self.logger.debug(
+            "filter completed",
+            context={
+                "filtered_count": len(self.filtered_rows),
+                },
+        )
+
         self.filtered_rows = apply_result_modifiers(self.filtered_rows, search_query, tz)
+
+        # debag用
+        try:
+            self.logger.debug(
+                "filtered_rows prepared",
+                context={
+                    "display_rows": len(self.filtered_rows),
+                },
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "apply_result_modifiers failed",
+                context={
+                    "error": str(e),
+                    },
+                )
 
         # 🔹 表示
         display_index = 0
@@ -706,7 +926,7 @@ class LogViewer:
             display_index += 1
 
         if search_query.aggregate is not None:
-            result = run_aggregate_query(self.filtered_rows, search_query.aggregate, tz)
+            result: AggregateResult = run_aggregate_query(self.filtered_rows, search_query.aggregate, tz)
             self.aggregate_result_var.set(result.message)
 
 
@@ -715,58 +935,86 @@ class LogViewer:
         dt: datetime | None = to_world_local_datetime(value, self.current_tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt is not None else str(value)
 
+
     def on_click(self, event: tk.Event) -> None:
         """シングルクリックで詳細表示"""
-        row: Event | None = self._get_row(event)
-        if row is None:
+        log_row: LogDict | None = self._get_row(event)
+        if log_row is None:
             return
-
         self._cancel_pending_single_click()
         self._single_click_after_id = self.root.after(
             200,
-            lambda: self._open_detail(row),
+            lambda: self._open_detail(log_row),
         )
+
 
     def on_double_click(self, event: tk.Event) -> None:
         """ダブルクリックでVSCodeを開く"""
         self._cancel_pending_single_click()
-
-        row: Event | None = self._get_row(event)
-        if row is None:
+        filtered_row: LogDict | None = self._get_row(event)
+        if filtered_row is None:
             return
-
-        # 🔥 Event → raw → where
-        raw: LogDict = row.raw
+        # 🔥 LogDict → raw → where
+        raw: LogDict = filtered_row
         where: LogWhere = raw.get("where", {})
-
         file_path: str = str(where.get("file", ""))
         line_no: int = int(where.get("line", 1))
-
         self.open_in_vscode(file_path, line_no)
+
 
     def _cancel_pending_single_click(self) -> None:
         """予約済みのシングルクリック処理を取り消す"""
         if self._single_click_after_id is None:
             return
-
         self.root.after_cancel(self._single_click_after_id)
         self._single_click_after_id = None
 
-    def _get_row(self, event: tk.Event) -> Event | None:
-        """クリック位置から行データを取得する"""
+
+    # ===============================
+    # 🔹 TreeからLogDict取得
+    # ===============================
+    def _get_row(
+        self,
+        event: tk.Event,
+    ) -> LogDict | None:
+        """クリック位置からLogDict取得"""
         row_id: str = self.tree.identify_row(event.y)
         if not row_id:
             return None
-
         try:
             index = int(row_id)
         except ValueError:
             return None
-
-        if index < 0 or index >= len(self.rows):
+        if index < 0 or index >= len(self.filtered_rows):
             return None
+        return self.filtered_rows[index]
 
-        return self.rows[index]
+
+    # ===============================
+    # 🔹 LogDict → Event変換
+    # ===============================
+    def _build_event(
+        self,
+        row: LogDict,
+    ) -> Event | None:
+        """単発LogDictからEvent生成"""
+        events: list[Event] = summarize([row])
+        if not events:
+            return None
+        return events[0]
+
+
+    # ===============================
+    # 🔹 複数LogDict → Event群
+    # ===============================
+    def _build_events(
+        self,
+        rows: list[LogDict],
+    ) -> list[Event]:
+        """複数LogDictからEvent群生成"""
+
+        return summarize(rows)
+
 
     def extract_source_file(self, msg: str) -> tuple[str | None, int]:
         """messageから、filenameを抽出する"""
@@ -797,95 +1045,265 @@ class LogViewer:
             print(f"extract error: {e}")  # デバッグ🔥
             return None, 1
 
+    def _unwrap_context_value(self, value: Any) -> Any:
+        """Loggerの型付きcontext値から実値を取り出す。"""
+        if isinstance(value, dict) and "type" in value and "value" in value:
+            typed_value = cast(dict[str, Any], value)
+            return typed_value.get("value")
+        return value
+
+    def _extract_context_source_file(self, raw: LogDict) -> tuple[str | None, int]:
+        """context.row.where から実際の発生元sourceを抽出する。"""
+        context: dict[str, Any] = raw.get("context", {})
+
+        row = self._unwrap_context_value(context.get("row"))
+        if not isinstance(row, dict):
+            return None, 1
+        row_dict: dict[str, Any] = cast(dict[str, Any], row)
+
+        where = row_dict.get("where", {})
+        if not isinstance(where, dict):
+            return None, 1
+        where_dict: dict[str, Any] = cast(dict[str, Any], where)
+
+        file_path: Any | None = where_dict.get("file")
+        line_no = where_dict.get("line", 1)
+        if not file_path:
+            return None, 1
+
+        try:
+            return str(file_path), int(line_no or 1)
+        except (TypeError, ValueError):
+            return str(file_path), 1
+
+    def _build_query_error_text(self, raw: LogDict) -> str:
+        """TraceQL/parser系エラーを人間向けに見やすく整形する。"""
+        context: dict[str, Any] = raw.get("context", {})
+
+        query = self._unwrap_context_value(context.get("search_text"))
+        error = self._unwrap_context_value(context.get("error"))
+        if not isinstance(query, str) or not query:
+            return ""
+        if not isinstance(error, str) or not error:
+            return ""
+
+        lines: list[str] = [
+            "QUERY ERROR",
+            "=" * 60,
+            f"Query : {query}",
+            f"Error : {error}",
+        ]
+
+        match: re.Match[str] | None = re.search(r"position\s+(\d+)", error, flags=re.IGNORECASE)
+        if match:
+            position = int(match.group(1))
+            caret_index: int = max(position - 1, 0)
+            lines.extend(
+                [
+                    "",
+                    query,
+                    " " * caret_index + "^",
+                ]
+            )
+
+        return "\n".join(lines)
+
+    def _get_event(
+        self,
+        event: tk.Event,
+    ) -> Event | None:
+        """クリック位置からEvent取得"""
+
+        row_id: str = self.tree.identify_row(event.y)
+
+        if not row_id:
+            return None
+
+        try:
+            index = int(row_id)
+        except ValueError:
+            return None
+
+        if index < 0 or index >= len(self.event_rows):
+            return None
+
+        return self.event_rows[index]
+
     # ===============================
     # 🔹 詳細ウィンドウ表示
     # ===============================
-    def _open_detail(self, row: Event) -> None:
+    def _open_detail(
+        self,
+        filtered_row: LogDict,
+    ) -> None:
         """選択されたログの詳細を表示する"""
-        raw: LogDict = row.raw
+
+        raw: LogDict = filtered_row
+
+        # =========================
+        # 🔹 Event化
+        # =========================
+        event_row: Event | None = self._build_event(raw)
+
+        if event_row is None:
+            return
+
         renderer = LogRenderer()
+
         # =========================
         # 🔹 ウィンドウ
         # =========================
         detail = tk.Toplevel(self.root)
-        detail.title("詳細情報")
-        detail.geometry("900x1200")
+        detail.title(self._t("dialog_detail_title"))
+        detail.geometry("1000x800")
 
+        # =========================
+        # 🔹 メインフレーム
+        # =========================
         frame = tk.Frame(detail)
         frame.pack(fill=tk.BOTH, expand=True)
 
         # =========================
-        # 🔹 基本情報
+        # 🔹 ボタンフレーム
+        # =========================
+        btn_frame = tk.Frame(frame)
+        btn_frame.pack(anchor="w", padx=10, pady=10)
+
+        # =========================
+        # 🔹 where情報
         # =========================
         where: LogWhere = raw.get("where", {})
+
         file_path: str = str(where.get("file", ""))
         line_no: int = int(where.get("line", 1) or 1)
-        # =========================
-        # 🔹 上部（色付き表示）
-        # =========================
-        parts: list[tuple[str, str]] = renderer.build_summary_parts(row, self.current_tz)
 
-        for text, color in parts:
-            if not text:
-                tk.Label(frame, text="").pack(anchor="w")
-                continue
-
-            tk.Label(
-                frame,
-                text=text,
-                fg=color or "#000000",  # ← 保険🔥
-                justify="left",
-                font=self.font_mono,
-                anchor="w",
-            ).pack(anchor="w", padx=10)
-
-        tk.Frame(frame, height=2, bg="#ccc").pack(fill="x", padx=10, pady=5)
         # =========================
-        # 🔹 VSCodeボタン
+        # 🔹 Loggerボタン
         # =========================
-        # ======ボタン専用フレーム====
-        btn_frame = tk.Frame(frame)
-        btn_frame.pack(anchor="w", padx=10, pady=(0, 8))
-        message = str(raw.get("what", {}).get("message", ""))
-
-        # 🔹 Logger（ログを書いた場所）
         tk.Button(
             btn_frame,
-            text="Open Logger(VSCode)",
+            text=self._t("button_open_logger_vscode"),
             fg="#0066cc",
             cursor="hand2",
-            width=20,
-            command=lambda f=file_path, line=line_no: self.open_in_vscode(f, line),
+            width=24,
+            command=lambda: self.open_in_vscode(
+                file_path,
+                line_no,
+            ),
         ).pack(side=tk.LEFT, padx=5)
 
-        # 🔹 Source（実際の原因）
+        # =========================
+        # 🔹 Sourceボタン
+        # =========================
+        message: str = str(
+            raw.get("what", {}).get("message", "")
+        )
+
         src_file: str | None
         src_line: int
+
         src_file, src_line = self.extract_source_file(message)
+        if not src_file:
+            src_file, src_line = self._extract_context_source_file(raw)
 
         if src_file:
+
             tk.Button(
                 btn_frame,
-                text="Open Source(VSCode)",
+                text=self._t("button_open_source_vscode"),
                 cursor="hand2",
-                width=20,
-                command=lambda f=src_file, line=src_line: self.open_in_vscode(f, line),
-            ).pack(side=tk.LEFT, padx=(0, 10))
+                width=24,
+                command=lambda: self.open_in_vscode(
+                    src_file,
+                    src_line,
+                ),
+            ).pack(side=tk.LEFT, padx=5)
+
+        # =========================
+        # 🔹 Textエリアフレーム
+        # =========================
+        text_frame = tk.Frame(frame)
+        text_frame.pack(
+            fill=tk.BOTH,
+            expand=True,
+            padx=10,
+            pady=10,
+        )
+
+        # =========================
+        # 🔹 Scrollbar
+        # =========================
+        y_scrollbar = tk.Scrollbar(text_frame)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        x_scrollbar = tk.Scrollbar(
+            text_frame,
+            orient="horizontal",
+        )
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # =========================
+        # 🔹 Text Widget
+        # =========================
+        text_area = tk.Text(
+            text_frame,
+            wrap="none",
+            font=("Consolas", 11),
+            yscrollcommand=y_scrollbar.set,
+            xscrollcommand=x_scrollbar.set,
+        )
+
+        text_area.pack(fill=tk.BOTH, expand=True)
+
+        y_scrollbar.config(command=text_area.yview) # type: ignore[union-attr]
+        x_scrollbar.config(command=text_area.xview) # type: ignore[union-attr]
+
+        # =========================
+        # 🔹 Summary
+        # =========================
+        summary_text: str = renderer.build_summary(
+            event_row,
+            self.current_tz,
+        )
+        query_error_text: str = self._build_query_error_text(raw)
+
         # =========================
         # 🔹 RAW
         # =========================
-        display_raw: dict[str, Any] = renderer.build_raw(row)
-
-        text_widget = tk.Text(
-            frame,
-            wrap="word",
-            font=self.font_mono,
+        display_raw: dict[str, Any] = renderer.build_raw(
+            event_row
         )
-        text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        text_widget.insert("1.0", "=== RAW DATA ===\n\n")
-        text_widget.insert("end", json.dumps(display_raw, indent=2, ensure_ascii=False))
-        text_widget.config(state="disabled")
+        raw_text: str = json.dumps(
+            display_raw,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        # =========================
+        # 🔹 表示文字列
+        # =========================
+        detail_sections: list[str] = [summary_text]
+        if query_error_text:
+            detail_sections.append(query_error_text)
+        detail_sections.append(
+            "=" * 60
+            + "\nRAW DATA\n"
+            + "=" * 60
+            + "\n\n"
+            + raw_text
+        )
+        detail_text: str = "\n\n".join(detail_sections)
+
+        # =========================
+        # 🔹 Text挿入
+        # =========================
+        text_area.insert("1.0", detail_text)
+
+        # =========================
+        # 🔹 読み取り専用
+        # =========================
+        text_area.config(state="disabled")
 
     def open_in_vscode(self, file_path: str, line_no: int) -> None:
         """VSCodeで該当ファイルを開く"""

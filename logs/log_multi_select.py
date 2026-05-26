@@ -13,60 +13,116 @@ from tkinter import ttk
 
 
 class LogFileSelector:
-    """複数のログファイルを選択するためのGUI"""
-    def __init__(self, root: tk.Tk, log_dir: Path) -> None:
-        self.root: tk.Tk = root
-        self.log_dir: Path = log_dir
-        self.result: list[Path] | None = None
 
-        self.window = tk.Toplevel(root)
-        self.window.title("Select Log Files")
+    def __init__(
+        self,
+        parent: tk.Misc,
+        log_dir: Path,
+    ) -> None:
+
+        self.parent: tk.Misc = parent
+        self.log_dir: Path = log_dir
+        self.result: list[Path] | None = None # 選択されたファイルの返却用リスト
+        self.files: list[Path] = [] # ログファイルの下書き用リスト
+        self.window: tk.Toplevel = tk.Toplevel(parent)
+        self.window.title("ログ選択")
+        self.window.geometry("800x500")
+
+        # 🔥 親子化
+        self.window.transient(parent)  # type: ignore
+
+        # 🔥 モーダル化
+        self.window.grab_set()
 
         self._build_ui()
 
+
     def _build_ui(self) -> None:
-        """UI構築"""
-        # ファイル取得
-        files: list[Path] = sorted(
-            list(self.log_dir.glob("*.log")) + list(self.log_dir.glob("*.jsonl")),
-            key=lambda p: p.stem,
+        """UIを構築する"""
+        # 選択されたログファイルのリストを取得
+        self.files: list[Path] = sorted(
+            list(self.log_dir.glob("*.jsonl")) +
+            list(self.log_dir.glob("*.log")),
+            key=lambda p: p.name
         )
-        self.files: list[Path] = files
 
-        # Treeview
-        self.tree = ttk.Treeview(self.window, columns=("date", "name"), show="headings")
+        if not self.files:
+            tk.Label(self.window, text="ログファイルが見つかりません").pack(
+                padx=12,
+                pady=12,
+                anchor="w",
+            )
+            tk.Button(self.window, text="閉じる", command=self.window.destroy).pack(pady=8)
+            self.window.wait_window()
+            return None
+
+        scrollbar = tk.Scrollbar(self.window, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+        
+        # ログファイルのリストを表示する
+        # 🔹 Treeview
+        self.tree = ttk.Treeview(
+            self.window,
+            columns=("date", "filename"),
+            show="headings",
+            selectmode="extended",
+            yscrollcommand=scrollbar.set,
+        )
         self.tree.heading("date", text="Date")
-        self.tree.heading("name", text="File")
-
+        self.tree.heading("filename", text="File")
+        for i, file_path in enumerate(self.files):
+            self.tree.insert(
+                "",
+                "end",
+                iid=str(i),
+                values=(
+                    file_path.stem,
+                    file_path.name,
+                ),
+            )
         self.tree.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.tree.yview)  # type: ignore[arg-type]
 
-        # データ投入
-        for i, f in enumerate(files):
-            date_str: str = f.stem.replace("app_", "")
-            self.tree.insert("", "end", iid=str(i), values=(date_str, f.name))
+        # ボタンフレーム
+        button_frame: ttk.Frame = ttk.Frame(self.window)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        # 複数選択可能
-        self.tree.config(selectmode="extended")
+        # OKボタン
+        ok_button: ttk.Button = ttk.Button(button_frame, text="OK", command=self._on_ok)
+        ok_button.pack(side=tk.RIGHT)
 
-        # ボタン
-        btn_frame = tk.Frame(self.window)
-        btn_frame.pack(fill=tk.X)
+        # キャンセルボタン
+        cancel_button: ttk.Button = ttk.Button(button_frame, text="キャンセル", command=self._on_cancel)
+        cancel_button.pack(side=tk.RIGHT, padx=(0, 10))
 
-        tk.Button(btn_frame, text="OK", command=self._on_ok).pack(side=tk.LEFT)
-        tk.Button(btn_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT)
-
-    def _on_ok(self) -> None:
-        """OKボタン押下時の処理"""
-        selected: tuple[str, ...] = self.tree.selection()
-        self.result = [self.files[int(i)] for i in selected]
-        self.window.destroy()
-
-    def _on_cancel(self) -> None:
-        """Cancelボタン押下時の処理"""
-        self.result = None
-        self.window.destroy()
 
     def show(self) -> list[Path] | None:
-        """ウィンドウを表示し、選択結果を返す"""
-        self.root.wait_window(self.window)
+        """ウィンドウを表示して、選択されたファイルのリストを返す
+        このfileの全ての出入り口はこの関数であるべき
+        """
+        self.window.wait_window()
         return self.result
+    
+    
+    def _on_ok(self) -> None:
+        """OKボタンが押されたときの処理"""
+        selected_items: tuple[str, ...] = self.tree.selection()
+
+        self.files: list[Path] = sorted(
+                    list(self.log_dir.glob("*.jsonl"))
+                    + list(self.log_dir.glob("*.log")),
+                    key=lambda p: p.name,
+                )
+
+        self.result = [
+            self.files[int(i)]
+            for i in selected_items
+        ]
+
+        self.window.destroy()
+
+
+    def _on_cancel(self) -> None:
+        """キャンセルボタンが押されたときの処理"""
+        self.result = None
+        self.window.destroy()
