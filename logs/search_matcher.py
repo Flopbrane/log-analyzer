@@ -36,6 +36,7 @@ from logs.search_text_analysis import (
     resolve_timezone,
 )
 from logs.search_similarity import DEFAULT_SIMILARITY_THRESHOLD, similarity_score
+from logs.traceql_bridge import match_traceql_search, should_use_legacy_search
 
 FIELD_MAP: dict[str, str] = {
     "level": "level",
@@ -549,6 +550,8 @@ def run_aggregate_query(
 
 def match_search_query(log: LogDict, query: str | SearchQuery, tz: str | tzinfo) -> bool:
     """検索テキストボックス1回分の判定を行う。"""
+    if isinstance(query, str) and not should_use_legacy_search(query):
+        return match_traceql_search(log, query, tz)
     parsed: SearchQuery = query if isinstance(query, SearchQuery) else parse_query(query, tz)
     if not parsed.raw_text.strip():
         return True

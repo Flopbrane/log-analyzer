@@ -1,6 +1,6 @@
 # Info Logger（日本語版）
 
-![version](https://img.shields.io/badge/version-v0.1.0-blue)
+![version](https://img.shields.io/badge/version-v0.2.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
@@ -62,6 +62,7 @@ Info Logger は、
 - ログを即時表示
 - フィルタ（type / trace_id）
 - JSON詳細表示
+- 日本語 / 英語表示に対応
 
 ---
 
@@ -69,6 +70,23 @@ Info Logger は、
 
 - 内部処理：UTC
 - 表示：ローカル時間（JST）
+
+---
+
+### 🔎 TraceQL Bridge
+
+- 高度な検索判定は `logs/traceql_bridge.py` を経由
+- `logs` 側から `query_engine` を直接 import しない設計
+- LogDict を TraceQL 用 Document に変換してから解析
+
+---
+
+### 🗄️ SQLiteアダプター
+
+- 大容量ログを SQLite に保存して検索可能
+- 数百MB〜数GB級のログを想定
+- `iter_search()` によるバッチ処理に対応
+- Logger側から利用する場合も `traceql_bridge.py` 経由を推奨
 
 ---
 
@@ -118,6 +136,10 @@ JSON Linesログファイル
 ↓  
 log_searcher（解析）  
 ↓  
+traceql_bridge（TraceQLとの境界）  
+↓  
+query_engine / SQLite adapter  
+↓  
 イベント（LogEvent）  
 ↓  
 log_viewer（GUI表示）  
@@ -135,6 +157,8 @@ log_viewer（GUI表示）
 | -------- | ---- |
 | Logger   | 記録 |
 | Searcher | 解析 |
+| Bridge   | Logger と TraceQL の橋渡し |
+| Query Engine | 検索 / 判定 / バッチ処理 |
 | Viewer   | 表示 |
 
 ---
@@ -147,15 +171,69 @@ logs/
 ├ log_storage.py
 ├ log_searcher.py
 ├ log_viewer.py
+├ traceql_bridge.py
 ├ log_types.py
 ├ time_utils.py
 └ log_paths.py
 
+query_engine/
+├ adapters/
+│ ├ logs.py
+│ └ sqlite_adapter.py
+├ evaluators/
+│ ├ memory.py
+│ └ sql.py
+├ parser.py
+└ models.py
+
 # コアロガー: multi_info_logger.py
 # I/O層: log_storage.py
 # 解析: log_searcher.py
+# TraceQL境界: traceql_bridge.py
+# 検索コア: query_engine/
 # GUI: log_viewer.py
 ```
+
+---
+
+## 🔎 TraceQL連携ポリシー
+
+Logger側とTraceQL検索コアは、責務分離のため bridge を介して連携します。
+
+```text
+logs / viewer
+    ↓
+logs.traceql_bridge
+    ↓
+query_engine
+```
+
+`logs` パッケージ内で `query_engine` を直接 import してよいのは、原則として `logs/traceql_bridge.py` のみです。
+Viewer、表示整形、Logger固有処理を、再利用可能な検索コアから分離するためのルールです。
+
+---
+
+## 🗄️ 大容量ログとSQLite検索
+
+Ver.0.2.0 では、巨大なJSONLログを扱うための SQLite アダプターを追加しています。
+
+```python
+from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
+
+with SQLiteDocumentStore("logs.sqlite") as store:
+    store.add_documents(documents)
+    results = store.search("level:ERROR", limit=100)
+```
+
+大量の検索結果は、バッチ単位で順次処理できます。
+
+```python
+for batch in store.iter_search("context.cpu_percent >= 80", batch_size=1000):
+    for result in batch.results:
+        handle(result.document)
+```
+
+Logger Viewer から利用する場合は、`logs.traceql_bridge` を通して受け渡す方針です。
 
 ## 📚 詳細ドキュメント
 
@@ -166,13 +244,12 @@ logs/
 
 ## 🚀 今後の展開
 
-- DB対応（SQLite / PostgreSQL）
 - リアルタイム監視
 - Webダッシュボード
 - 通知連携（Discord / Slack）
 - AIによる異常検知
-- 多言語対応（英語 / 日本語）
 - タイムゾーン対応・管理の強化
+- 追加ストレージバックエンド対応
 
 ---
 

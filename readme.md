@@ -1,6 +1,6 @@
 # Info Logger
 
-![version](https://img.shields.io/badge/version-v0.1.0-blue)
+![version](https://img.shields.io/badge/version-v0.2.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
@@ -16,7 +16,9 @@
 
 - Structured Logging
 - Event Analysis
-- GUI Viewer
+- Japanese / English GUI Viewer
+- TraceQL-powered search bridge
+- SQLite-backed document adapter for large logs
 
 ---
 
@@ -81,10 +83,21 @@ Info Logger goes further by:
   - View logs instantly
   - Filter by type / trace_id
   - Inspect raw JSON
+  - Japanese / English display support
 
 - 🕒 **Timezone handling**
   - Internal: UTC
   - Display: Local time (JST)
+
+- 🔎 **TraceQL bridge**
+  - Advanced query matching is routed through `logs/traceql_bridge.py`
+  - Logger/UI code does not import `query_engine` directly
+  - Log records are converted to TraceQL documents at the bridge boundary
+
+- 🗄️ **SQLite adapter**
+  - Store generic TraceQL documents in SQLite
+  - Search large log sets in batches
+  - Useful when JSONL logs grow to hundreds of MB or several GB
 
 ---
 
@@ -134,6 +147,10 @@ JSON Lines Log File
 ↓  
 log_searcher (analysis)  
 ↓  
+traceql_bridge (TraceQL boundary)  
+↓  
+query_engine / SQLite adapter  
+↓  
 log_viewer (GUI)  
 
 ---
@@ -149,6 +166,8 @@ log_viewer (GUI)
 | -------- | ------- |
 | Logger   | Record  |
 | Searcher | Analyze |
+| Bridge   | Convert logs to TraceQL documents |
+| Query Engine | Query / match / batch-search |
 | Viewer   | Display |
 
 ---
@@ -161,15 +180,70 @@ logs/
 ├ log_storage.py
 ├ log_searcher.py
 ├ log_viewer.py
+├ traceql_bridge.py
 ├ log_types.py
 ├ time_utils.py
 └ log_paths.py
 
+query_engine/
+├ adapters/
+│ ├ logs.py
+│ └ sqlite_adapter.py
+├ evaluators/
+│ ├ memory.py
+│ └ sql.py
+├ parser.py
+└ models.py
+
 # Core logger: multi_info_logger.py
 # I/O layer: log_storage.py
 # Analysis: log_searcher.py
+# TraceQL boundary: traceql_bridge.py
+# Query core: query_engine/
 # GUI: log_viewer.py
 ```
+
+---
+
+## 🔎 TraceQL Integration Policy
+
+The Logger application layer and TraceQL core are separated by a bridge.
+
+```text
+logs / viewer
+    ↓
+logs.traceql_bridge
+    ↓
+query_engine
+```
+
+Only `logs/traceql_bridge.py` should import `query_engine` from the `logs` package.
+This keeps the viewer, log formatting, and application-specific behavior independent from the reusable query core.
+
+---
+
+## 🗄️ Large Log Search with SQLite
+
+For very large log files, loading everything into memory is not always practical.
+Version 0.2.0 includes a SQLite document adapter:
+
+```python
+from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
+
+with SQLiteDocumentStore("logs.sqlite") as store:
+    store.add_documents(documents)
+    results = store.search("level:ERROR", limit=100)
+```
+
+For large result sets, use batch iteration:
+
+```python
+for batch in store.iter_search("context.cpu_percent >= 80", batch_size=1000):
+    for result in batch.results:
+        handle(result.document)
+```
+
+When this is used from the Logger viewer side, route data through `logs.traceql_bridge`.
 
 ---
 
@@ -200,9 +274,9 @@ For Japanese users:
 
 ### 🚀 Future Plans
 
-- Database backend
 - Real-time monitoring
 - Web dashboard
+- More storage backends
 
 ### 📄 License
 

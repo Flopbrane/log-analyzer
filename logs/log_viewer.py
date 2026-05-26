@@ -678,7 +678,7 @@ class LogViewer:
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
 
-            if not match_search_query(row, search_query, tz):
+            if not match_search_query(row, search_text, tz):
                 continue
 
             # 🔹 表示
