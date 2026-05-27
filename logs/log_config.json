@@ -4,5 +4,7 @@
     "timezone_city": "Tokyo",
     "timezone": "Asia/Tokyo",
     "window_geometry": "1200x650+100+100",
-    "last_log_paths": []
+    "last_log_paths": [
+        "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-05-27.jsonl"
+    ]
 }
