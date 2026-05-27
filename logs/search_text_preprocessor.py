@@ -6,7 +6,7 @@ import re
 from datetime import date, datetime
 from typing import Any, Mapping, Sequence
 
-from logger_window.logs.time_utils import to_world_local_datetime
+from logs.time_utils import to_world_local_datetime
 
 
 TIME_HH_MM_PATTERN: re.Pattern[str] = re.compile(r"\d{1,2}:\d{1,2}")

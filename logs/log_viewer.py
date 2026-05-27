@@ -19,41 +19,41 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, cast
 
-from logger_window.logs.display_formatter import LogRenderer
-from logger_window.logs.language_selector import (
+from logs.display_formatter import LogRenderer
+from logs.language_selector import (
     LanguageCode,
     build_timezone_label,
     normalize_language,
     translate,
     translate_timezone_area,
 )
-from logger_window.logs.log_app import get_logger
-from logger_window.logs.log_config import load_viewer_config, save_viewer_config
-from logger_window.logs.log_multi_select import LogFileSelector
-from logger_window.logs.log_paths import LOGS_DIR
-from logger_window.logs.log_searcher import collect_logs, summarize
-from logger_window.logs.log_storage import load_log
-from logger_window.logs.log_types import Event, LogDict, LogWhere
-from logger_window.logs.log_validator import validate_log
-from logger_window.logs.multi_info_logger import AppLogger
-from logger_window.logs.openai_key_store import (
+from logs.log_app import get_logger
+from logs.log_config import load_viewer_config, save_viewer_config
+from logs.log_multi_select import LogFileSelector
+from logs.log_paths import LOGS_DIR
+from logs.log_searcher import collect_logs, summarize
+from logs.log_storage import load_log
+from logs.log_types import Event, LogDict, LogWhere
+from logs.log_validator import validate_log
+from logs.multi_info_logger import AppLogger
+from logs.openai_key_store import (
     delete_openai_api_key,
     has_openai_api_key,
     is_keyring_available,
     save_openai_api_key,
 )
-from logger_window.logs.search_matcher import (
+from logs.search_matcher import (
     apply_result_modifiers,
     match_search_query,
     run_aggregate_query,
 )
-from logger_window.logs.search_models import AggregateResult, SearchQuery
-from logger_window.logs.search_text_analysis import parse_query
-from logger_window.logs.search_text_preprocessor import build_search_text_datetime
-from logger_window.logs.time_utils import (
+from logs.search_models import AggregateResult, SearchQuery
+from logs.search_text_analysis import parse_query
+from logs.search_text_preprocessor import build_search_text_datetime
+from logs.time_utils import (
     to_world_local_datetime,
 )
-from logger_window.logs.tzinfo_formatter import (
+from logs.tzinfo_formatter import (
     TimeZoneData,
     TimeZoneItem,
     build_timezone_data,

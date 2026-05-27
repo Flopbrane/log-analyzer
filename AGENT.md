@@ -12,7 +12,7 @@ This project is divided into multiple logical layers.
 
 The core engine MUST NOT depend on:
 
-* `logger_window/`
+* `logs/`
 * GUI modules
 * Viewer-specific modules
 * tkinter
@@ -22,7 +22,7 @@ The core engine MUST NOT depend on:
 Allowed dependency direction:
 
 ```text
-logger_window
+logs
     ↓
 traceql_bridge
     ↓
@@ -34,7 +34,7 @@ Forbidden dependency direction:
 ```text
 query_engine
     ↓
-logger_window
+logs
 ```
 
 ---
@@ -58,9 +58,9 @@ It should be possible to publish `query_engine/` as a standalone package.
 
 ---
 
-## logger_window Responsibility
+## logs Responsibility
 
-`logger_window/` is the application/UI layer.
+`logs/` is the application/UI layer.
 
 Responsibilities:
 
@@ -92,7 +92,7 @@ Avoid direct imports from UI modules into `query_engine`.
 When refactoring imports:
 
 * move generic logic into `query_engine`
-* keep UI-specific logic inside `logger_window`
+* keep UI-specific logic inside `logs`
 * avoid circular imports
 * avoid cross-layer helper imports
 * prefer utility extraction over direct coupling
@@ -110,7 +110,7 @@ Generic text processing:
 
 should live in `query_engine`.
 
-UI-specific search behavior should remain in `logger_window`.
+UI-specific search behavior should remain in `logs`.
 
 ---
 
@@ -127,7 +127,7 @@ tests/query_engine/
 UI tests:
 
 ```text
-tests/logger_window/
+tests/logs/
 ```
 
 Avoid mixing UI and core logic in the same test file.

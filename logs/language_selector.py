@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Literal, TypeAlias
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logger_window.logs.lang import en, ja
+from lang import en, ja
 
 LanguageCode: TypeAlias = Literal["ja", "en"]
 
@@ -138,4 +138,3 @@ def build_timezone_label(
         f"{country_text} "
         f"({utc_offset})"
     )
-
