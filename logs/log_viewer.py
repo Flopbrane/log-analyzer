@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import ast
 import json
-import re
 import subprocess
 import tkinter as tk
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any, Final, cast
+from typing import Any, Final, TypeGuard, cast
 
 from logs.display_formatter import LogRenderer
 from logs.language_selector import (
@@ -62,6 +62,15 @@ from logs.tzinfo_formatter import (
 
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
+TypedContextValue = Mapping[str, object]
+
+
+def _is_typed_context_value(value: object) -> TypeGuard[TypedContextValue]:
+    """Loggerの {"type": ..., "value": ...} context値か判定する。"""
+    if not isinstance(value, Mapping):
+        return False
+    mapping = cast(Mapping[object, object], value)
+    return "type" in mapping and "value" in mapping
 
 
 class LogViewer:
@@ -193,14 +202,14 @@ class LogViewer:
         ).pack()
         dialog.update_idletasks()
 
-        root_x = self.root.winfo_rootx()
-        root_y = self.root.winfo_rooty()
-        root_width = max(self.root.winfo_width(), 1)
-        root_height = max(self.root.winfo_height(), 1)
-        dialog_width = dialog.winfo_width()
-        dialog_height = dialog.winfo_height()
-        x = root_x + (root_width - dialog_width) // 2
-        y = root_y + (root_height - dialog_height) // 2
+        root_x: int = self.root.winfo_rootx()
+        root_y: int = self.root.winfo_rooty()
+        root_width: int = max(self.root.winfo_width(), 1)
+        root_height: int = max(self.root.winfo_height(), 1)
+        dialog_width: int = dialog.winfo_width()
+        dialog_height: int = dialog.winfo_height()
+        x: int = root_x + (root_width - dialog_width) // 2
+        y: int = root_y + (root_height - dialog_height) // 2
         dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
         dialog.update()
 
@@ -212,14 +221,14 @@ class LogViewer:
 
     def _load_window_geometry(self) -> str:
         """設定ファイルからウィンドウ位置/サイズを取得する。"""
-        geometry = self.viewer_config.get("window_geometry")
+        geometry: Any | None = self.viewer_config.get("window_geometry")
         if isinstance(geometry, str) and geometry:
             return geometry
         return "1200x650+100+100"
 
     def _load_timezone(self) -> str:
         """設定ファイルからTimezoneを取得する。"""
-        timezone_name = self.viewer_config.get("timezone")
+        timezone_name: Any | None = self.viewer_config.get("timezone")
         if isinstance(timezone_name, str) and timezone_name in {
             item.zone
             for items in self.tz_data.area_map.values()
@@ -227,10 +236,10 @@ class LogViewer:
         }:
             return timezone_name
 
-        area = self.viewer_config.get("timezone_area")
-        city = self.viewer_config.get("timezone_city")
+        area: Any | None = self.viewer_config.get("timezone_area")
+        city: Any | None = self.viewer_config.get("timezone_city")
         if isinstance(area, str) and isinstance(city, str):
-            legacy_timezone = f"{area}/{city}"
+            legacy_timezone: str = f"{area}/{city}"
             if legacy_timezone in {
                 item.zone
                 for items in self.tz_data.area_map.values()
@@ -246,6 +255,8 @@ class LogViewer:
         if not isinstance(paths_value, list):
             legacy_path: Any | None = self.viewer_config.get("last_log_path")
             paths_value = [legacy_path] if isinstance(legacy_path, str) else []
+
+        paths_value = cast(list[Any], paths_value)
 
         paths: list[Path] = []
         for value in paths_value:
@@ -294,7 +305,7 @@ class LogViewer:
         """表示TimezoneをIANA名で切り替える。"""
         if "/" not in timezone_name:
             return
-        area = timezone_name.split("/", 1)[0]
+        area: str = timezone_name.split("/", 1)[0]
         if area not in self.tz_data.area_map:
             return
         if not any(item.zone == timezone_name for item in self.tz_data.area_map[area]):
@@ -1051,6 +1062,7 @@ class LogViewer:
 
     def extract_source_file(self, msg: str) -> tuple[str | None, int]:
         """messageから、filenameを抽出する"""
+        _: str
         rest: str
         try:
             # ① 分割
@@ -1078,18 +1090,19 @@ class LogViewer:
             print(f"extract error: {e}")  # デバッグ🔥
             return None, 1
 
-    def _unwrap_context_value(self, value: Any) -> Any:
+    def _unwrap_context_value(self, value: object) -> object:
         """Loggerの型付きcontext値から実値を取り出す。"""
-        if isinstance(value, dict) and "type" in value and "value" in value:
-            typed_value = cast(dict[str, Any], value)
-            return typed_value.get("value")
+
+        if _is_typed_context_value(value):
+            return value["value"]
+
         return value
 
     def _extract_context_source_file(self, raw: LogDict) -> tuple[str | None, int]:
         """context.row.where から実際の発生元sourceを抽出する。"""
         context: dict[str, Any] = raw.get("context", {})
 
-        row = self._unwrap_context_value(context.get("row"))
+        row: object = self._unwrap_context_value(context.get("row"))
         if not isinstance(row, dict):
             return None, 1
         row_dict: dict[str, Any] = cast(dict[str, Any], row)
@@ -1120,7 +1133,7 @@ class LogViewer:
         if not isinstance(error, str) or not error:
             return ""
 
-        return build_query_error_text(query, error)
+        return build_query_error_text(query, error, self.raw_rows, self.current_tz)
 
     def _get_event(
         self,

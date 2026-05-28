@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 
 @dataclass
@@ -20,6 +20,7 @@ class LoggerConfig:
     timezone: str = "UTC"
     time_format: str = "%Y-%m-%d %H:%M:%S"
 
+
 def load_viewer_config() -> dict[str, Any]:
     """ログビューワの設定をJSONファイルから読み込む。"""
     config_path: str = os.path.join(os.path.dirname(__file__), "log_config.json")
@@ -27,10 +28,13 @@ def load_viewer_config() -> dict[str, Any]:
         return {}
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            data: Any = json.load(f)
+            raw_data: Any = json.load(f)
     except (OSError, json.JSONDecodeError):
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(raw_data, dict):
+        return {}
+    return cast(dict[str, Any], raw_data)
+
 
 def save_viewer_config( config: dict[str, Any], ) -> None:
     """ログビューワの設定をJSONファイルへ保存する。"""

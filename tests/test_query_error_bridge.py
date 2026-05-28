@@ -29,6 +29,35 @@ class QueryErrorBridgeTests(unittest.TestCase):
 
         self.assertIn("level:ERROR", text)
 
+    def test_datetime_suggestions_use_first_log_time(self) -> None:
+        rows = [
+            {"time": "2026-05-28T01:23:45+00:00"},
+            {"time": "2026-05-29T10:00:00+00:00"},
+        ]
+
+        date_text = build_query_error_text(
+            "date:",
+            "Expected field value at position 6.",
+            rows,
+            "Asia/Tokyo",
+        )
+        local_date_text = build_query_error_text(
+            "local_date:",
+            "Expected field value at position 12.",
+            rows,
+            "Asia/Tokyo",
+        )
+        local_clock_text = build_query_error_text(
+            "local_clock:",
+            "Expected field value at position 13.",
+            rows,
+            "Asia/Tokyo",
+        )
+
+        self.assertIn("date:2026-05-28 01:23:45", date_text)
+        self.assertIn("local_date:2026-05-28", local_date_text)
+        self.assertIn("local_clock:10:23:45", local_clock_text)
+
 
 if __name__ == "__main__":
     unittest.main()

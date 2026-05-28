@@ -4,6 +4,7 @@ The adapter keeps query_engine independent from Logger/UI code. Callers pass
 generic Document mappings, and SQLite stores each document as JSON plus a
 flattened text column for full-text-ish LIKE searches.
 """
+# cspell:ignore executemany
 from __future__ import annotations
 
 import json
@@ -12,7 +13,6 @@ import sqlite3
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from query_engine.evaluators.sql import compile_sql_where
 from query_engine.models import Document, SearchResult

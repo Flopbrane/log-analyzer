@@ -7,6 +7,7 @@ import json
 import math
 import re
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,7 @@ QUERY_SYNONYMS: dict[str, tuple[str, ...]] = {
     "symptoms": ("symptom", "warning", "error", "detected", "invalid"),
 }
 
-_CACHE: dict[str, Counter[str]] | None = None
+_cache: dict[str, Counter[str]] | None = None
 
 
 def _normalize(text: str) -> str:
@@ -75,9 +76,9 @@ def vectorize_text(text: str, *, expand_query: bool = False) -> Counter[str]:
 
 
 def _load_cache() -> dict[str, Counter[str]]:
-    global _CACHE  # noqa: PLW0603
-    if _CACHE is not None:
-        return _CACHE
+    global _cache  # noqa: PLW0603
+    if _cache is not None:
+        return _cache
 
     cache: dict[str, Counter[str]] = {}
     if CACHE_PATH.exists():
@@ -91,16 +92,17 @@ def _load_cache() -> dict[str, Counter[str]]:
             text_hash: object = record.get("hash")
             raw_vector: object = record.get("vector")
             if isinstance(text_hash, str) and isinstance(raw_vector, dict):
+                vector_items: Mapping[object, object] = raw_vector
                 cache[text_hash] = Counter(
                     {
                         str(key): int(value)
-                        for key, value in raw_vector.items()
+                        for key, value in vector_items.items()
                         if isinstance(value, int | float)
                     }
                 )
 
-    _CACHE = cache
-    return _CACHE
+    _cache = cache
+    return _cache
 
 
 def _append_cache(text_hash: str, vector: Counter[str]) -> None:

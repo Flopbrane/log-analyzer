@@ -10,32 +10,16 @@ from datetime import datetime, timezone, tzinfo
 from typing import Any, Callable, cast
 
 from logs.log_types import LogDict
-from logs.search_ast import (
-    AndNode,
-    CompareNode,
-    EmptyNode,
-    FieldNode,
-    NotNode,
-    OrNode,
-    QueryNode,
-    RegexNode,
-    SimilarNode,
-    TermNode,
-)
-from logs.search_models import (
-    AggregateQuery,
-    AggregateResult,
-    CompareOperator,
-    IgnoreRule,
-    SearchQuery,
-    SortSpec,
-)
-from logs.search_text_analysis import (
-    is_time_query,
-    parse_query,
-    resolve_timezone,
-)
-from logs.search_similarity import DEFAULT_SIMILARITY_THRESHOLD, similarity_score
+from logs.search_ast import (AndNode, CompareNode, EmptyNode, FieldNode,
+                             NotNode, OrNode, QueryNode, RegexNode,
+                             SimilarNode, TermNode)
+from logs.search_models import (AggregateQuery, AggregateResult,
+                                CompareOperator, IgnoreRule, SearchQuery,
+                                SortSpec)
+from logs.search_similarity import (DEFAULT_SIMILARITY_THRESHOLD,
+                                    similarity_score)
+from logs.search_text_analysis import (is_time_query, parse_query,
+                                       resolve_timezone)
 from logs.traceql_bridge import match_traceql_search, should_use_legacy_search
 
 FIELD_MAP: dict[str, str] = {
@@ -523,7 +507,7 @@ def run_aggregate_query(
             message=message,
         )
 
-    values = []
+    values: list[str] = []
     for log in matched_logs:
         values.extend(str(value) for value in get_aggregate_values(log, aggregate))
 
@@ -570,11 +554,15 @@ def filter_logs(
     return [log for log in logs if match_search_query(log, parsed, tz)]
 
 
-def _sort_value(log: LogDict, sort: SortSpec, tz: str | tzinfo) -> tuple[int, object]:
+def _sort_value(
+    log: LogDict,
+    sort: SortSpec,
+    tz: str | tzinfo,
+) -> tuple[int, int, float, str]:
     field: str = sort.field.lower()
     if field == "time":
         local_dt: datetime | None = to_local_datetime(log.get("time"), tz)
-        return (0, local_dt.timestamp()) if local_dt is not None else (1, "")
+        return (0, 0, local_dt.timestamp(), "") if local_dt is not None else (1, 0, 0.0, "")
 
     value: object = _get_nested_value(
         cast(dict[str, Any], log),
@@ -582,13 +570,13 @@ def _sort_value(log: LogDict, sort: SortSpec, tz: str | tzinfo) -> tuple[int, ob
         default=_MISSING,
     )
     if value is _MISSING:
-        return 1, ""
+        return 1, 0, 0.0, ""
 
     numeric_values: list[float] = iter_numeric_values(value)
     if numeric_values:
-        return 0, numeric_values[0]
+        return 0, 0, numeric_values[0], ""
 
-    return 0, flatten_text(value).lower()
+    return 0, 1, 0.0, flatten_text(value).lower()
 
 
 def apply_result_modifiers(
@@ -607,7 +595,7 @@ def apply_result_modifiers(
             log for log in result if _sort_value(log, sort_spec, tz)[0] != 0
         ]
         present_logs.sort(
-            key=lambda log: _sort_value(log, sort_spec, tz)[1],
+            key=lambda log: _sort_value(log, sort_spec, tz),
             reverse=sort_spec.direction == "desc",
         )
         result = present_logs + missing_logs

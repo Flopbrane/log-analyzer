@@ -1,16 +1,16 @@
 """外部文書ファイルから検索用TextDocumentを作成する抽出器。"""
 from __future__ import annotations
 
-from pathlib import Path
 from html.parser import HTMLParser
+from pathlib import Path
 from typing import Any
 
 from query_engine.adapters.documents import TextDocument, from_text, normalize_text
 
-TEXT_EXTENSIONS = frozenset({".txt", ".md", ".rst", ".csv", ".json", ".jsonl", ".log", ".py", ".js", ".ts"})
-HTML_EXTENSIONS = frozenset({".html", ".htm", ".xhtml"})
-PDF_EXTENSIONS = frozenset({".pdf"})
-DOCX_EXTENSIONS = frozenset({".docx"})
+TEXT_EXTENSIONS: frozenset[str] = frozenset({".txt", ".md", ".rst", ".csv", ".json", ".jsonl", ".log", ".py", ".js", ".ts"})
+HTML_EXTENSIONS: frozenset[str] = frozenset({".html", ".htm", ".xhtml"})
+PDF_EXTENSIONS: frozenset[str] = frozenset({".pdf"})
+DOCX_EXTENSIONS: frozenset[str] = frozenset({".docx"})
 
 
 def extract_text_file(path: str | Path, **metadata: Any) -> TextDocument:
@@ -85,11 +85,11 @@ class _PlainTextHTMLParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._skip_depth:
             return
-        text = normalize_text(data)
+        text: str = normalize_text(data)
         if not text:
             return
         if self._in_title:
-            self.title = text
+            self.title: str = text
         self.parts.append(text)
 
 

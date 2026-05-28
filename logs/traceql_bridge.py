@@ -111,6 +111,7 @@ def log_to_traceql_document(log: LogDict, tz: str | tzinfo) -> Document:
     context: Mapping[str, Any] = cast(Mapping[str, Any], log.get("context", {}))
     normalized_context: dict[str, Any] = _unwrap_logger_values(context)
     message: str = str(what.get("message", ""))
+    utc_dt: datetime | None = _to_utc_datetime(log.get("time"))
     local_dt: datetime | None = _to_local_datetime(log.get("time"), tz)
 
     document: dict[str, Any] = {
@@ -131,11 +132,13 @@ def log_to_traceql_document(log: LogDict, tz: str | tzinfo) -> Document:
         "module": where.get("module", ""),
         "line": where.get("line", ""),
     }
+    if utc_dt is not None:
+        document["date"] = utc_dt.strftime("%Y-%m-%d")
+        document["utc_clock"] = utc_dt.strftime("%H:%M:%S")
     if local_dt is not None:
         document["local_time"] = local_dt.isoformat(timespec="seconds")
         document["local_date"] = local_dt.strftime("%Y-%m-%d")
         document["local_clock"] = local_dt.strftime("%H:%M:%S")
-        document["date"] = document["local_date"]
 
     return document
 
@@ -178,6 +181,18 @@ def _to_local_datetime(raw_time: object, tz: str | tzinfo) -> datetime | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(_resolve_timezone(tz))
+
+
+def _to_utc_datetime(raw_time: object) -> datetime | None:
+    if not isinstance(raw_time, str):
+        return None
+    try:
+        dt: datetime = datetime.fromisoformat(raw_time)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _resolve_timezone(tz: str | tzinfo) -> tzinfo:

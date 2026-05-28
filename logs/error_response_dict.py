@@ -12,9 +12,6 @@ FIELD_VALUE_SUGGESTIONS: dict[str, tuple[str, ...]] = {
     "func": ("run", "main"),
     "file": ("app.py",),
     "module": ("logs", "query_engine"),
-    "date": ("2026-05-28",),
-    "local_date": ("2026-05-28",),
-    "local_clock": ("10:00:00",),
 }
 
 FIELD_ALIASES: dict[str, str] = {
@@ -27,8 +24,10 @@ FIELD_ALIASES: dict[str, str] = {
     "trace.id": "trace_id",
 }
 
+DATETIME_FIELDS: tuple[str, ...] = ("date", "local_date", "local_clock")
+
 KNOWN_FIELDS: tuple[str, ...] = tuple(
-    sorted(set(FIELD_VALUE_SUGGESTIONS) | set(FIELD_ALIASES.values()))
+    sorted(set(FIELD_VALUE_SUGGESTIONS) | set(FIELD_ALIASES.values()) | set(DATETIME_FIELDS))
 )
 
 EXPECTED_HINTS: dict[str, str] = {

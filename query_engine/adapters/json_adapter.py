@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Iterator, cast
 
 from query_engine.adapters.base import normalize_document
-from query_engine.adapters.tabular import Record, rows_to_documents
+from query_engine.adapters.tabular import Record
 from query_engine.models import Document
 
 
