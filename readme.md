@@ -1,6 +1,6 @@
 # Info Logger
 
-![version](https://img.shields.io/badge/version-v0.2.0-blue)
+![version](https://img.shields.io/badge/version-v0.9.9-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
@@ -12,6 +12,19 @@
 
 ---
 
+## ✨ Current Status: Ver.0.9.9
+
+Ver.0.9.9 is a near-complete pre-1.0 release.
+
+- `query_engine/` is now treated as the independent TraceQL/query core inside this project.
+- Logger/UI code reaches the query core only through `logs/traceql_bridge.py`.
+- Query syntax errors are preserved as diagnosable events instead of crashing the Viewer.
+- `QUERY ERROR` reports include query text, caret position, expected syntax, and dictionary-based suggestions.
+- Timezone display uses UTC internally and local-time rendering in the Viewer, with `tzdata` version tracking.
+- Runtime log files and local editor files are excluded from Git tracking.
+
+---
+
 ## ✨ What’s Included
 
 - Structured Logging
@@ -19,6 +32,8 @@
 - Japanese / English GUI Viewer
 - TraceQL-powered search bridge
 - SQLite-backed document adapter for large logs
+- Query error suggestions without requiring AI
+- tzdata update helper for local-time display accuracy
 
 ---
 
@@ -87,12 +102,19 @@ Info Logger goes further by:
 
 - 🕒 **Timezone handling**
   - Internal: UTC
-  - Display: Local time (JST)
+  - Display: Local time selected in the Viewer
+  - `logs/.tzdata_ver_reference` records the checked `year:tzdata-version`
+  - `python -m logs.update_tzdata` can update timezone data explicitly
 
 - 🔎 **TraceQL bridge**
   - Advanced query matching is routed through `logs/traceql_bridge.py`
   - Logger/UI code does not import `query_engine` directly
   - Log records are converted to TraceQL documents at the bridge boundary
+
+- 🧭 **Query error reports**
+  - Syntax errors are shown as `QUERY ERROR` reports
+  - Caret position is displayed when available
+  - Dictionary-based suggestions are generated from `logs/error_response_dict.py`
 
 - 🗄️ **SQLite adapter**
   - Store generic TraceQL documents in SQLite
@@ -220,12 +242,15 @@ query_engine
 Only `logs/traceql_bridge.py` should import `query_engine` from the `logs` package.
 This keeps the viewer, log formatting, and application-specific behavior independent from the reusable query core.
 
+The `query_engine/` folder in this repository is independent from any external `traceql_project`.
+Changes made under another project, such as `traceql/logger_window/query_engine/`, must not be assumed to update this repository.
+
 ---
 
 ## 🗄️ Large Log Search with SQLite
 
 For very large log files, loading everything into memory is not always practical.
-Version 0.2.0 includes a SQLite document adapter:
+Version 0.9.9 includes a SQLite document adapter:
 
 ```python
 from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
@@ -253,12 +278,33 @@ When this is used from the Logger viewer side, route data through `logs.traceql_
 pip install -r requirements.txt
 ```
 
+### Update TimeZoneData
+
+IANA timezone data is released irregularly when timezone or daylight-saving rules change.
+Run this helper to check PyPI's latest `tzdata` package and update the local environment when needed:
+
+```bash
+python -m logs.update_tzdata
+```
+
+The reference file is:
+
+```text
+logs/.tzdata_ver_reference
+```
+
+It stores `year:tzdata-version`, for example:
+
+```text
+2026:2026.2
+```
+
 ---
 
 ## 📚 Documentation
 
 - Design → docs/Design.md
-- Usage → docs/How_to_use.md
+- Usage → docs/How_To_Use_EN.md
 
 ---
 
@@ -266,9 +312,9 @@ pip install -r requirements.txt
 
 For Japanese users:
 
-- Overview → README_JP.md
+- Overview → readme_jp.md
 - Design → docs/Design.md
-- Usage → docs/How_to_use.md
+- Usage → docs_jp/How_To_Use_JP.md
 
 ---
 

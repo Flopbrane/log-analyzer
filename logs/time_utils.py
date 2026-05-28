@@ -9,12 +9,34 @@
 #########################
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any, Callable, Literal, Protocol, TypeAlias, runtime_checkable
 from zoneinfo import ZoneInfo, available_timezones
 
 from logs.log_config import LoggerConfig
+
+TZDATA_REFERENCE_FILE = ".tzdata_ver_reference"
+TZDATA_PYPI_URL = "https://pypi.org/pypi/tzdata/json"
+
+
+@dataclass(frozen=True, slots=True)
+class TzdataUpdateResult:
+    """tzdata更新確認の結果。"""
+
+    checked: bool
+    updated: bool
+    installed_version: str
+    latest_version: str
+    reference_version: str
+    message: str
 
 
 @runtime_checkable
@@ -322,39 +344,76 @@ def list_timezones_formatted() -> list[tuple[str, str]]:
 # ========================
 # tzdata auto updater
 # ========================
-def update_tzdata_if_year_changed(
+def get_installed_tzdata_version() -> str:
+    """現在importできるtzdataパッケージのバージョンを返す。"""
+    try:
+        import tzdata
+    except Exception:
+        return "not-installed"
+    return str(getattr(tzdata, "__version__", "unknown"))
+
+
+def get_latest_tzdata_version(timeout: float = 10.0) -> str | None:
+    """PyPIから公開済みの最新tzdataバージョンを取得する。"""
+    try:
+        with urllib.request.urlopen(TZDATA_PYPI_URL, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, urllib.error.URLError, json.JSONDecodeError):
+        return None
+
+    version = payload.get("info", {}).get("version")
+    return version if isinstance(version, str) and version else None
+
+
+def update_tzdata_if_needed(
     *,
     state_file: str | None = None,
     logger: LoggerLike | None = None,
-) -> bool:
-    """年が変わった時だけtzdataを最新版へ更新する"""
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    current_year: int = date.today().year
+) -> TzdataUpdateResult:
+    """tzdataの最新公開バージョンを確認し、必要なら更新する。"""
     update_state_file: Path = (
         Path(state_file)
         if state_file
-        else Path(__file__).with_name(".tzdata_updated_year")
+        else Path(__file__).with_name(TZDATA_REFERENCE_FILE)
     )
+    current_year = str(date.today().year)
 
     try:
-        last_updated_year: int | None = int(
-            update_state_file.read_text(encoding="utf-8").strip()
-        )
-    except (FileNotFoundError, ValueError):
-        last_updated_year = None
+        reference_version = update_state_file.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        reference_version = ""
     except Exception as e:
         if logger:
             logger.warning(
                 "tzdata update state read failed",
                 context={"error": str(e), "state_file": str(update_state_file)},
             )
-        last_updated_year = None
+        reference_version = ""
 
-    if last_updated_year == current_year:
-        return False
+    installed_version = get_installed_tzdata_version()
+    latest_version = get_latest_tzdata_version()
+    if latest_version is None:
+        if not reference_version:
+            update_state_file.write_text(f"{current_year}:unknown", encoding="utf-8")
+        return TzdataUpdateResult(
+            checked=False,
+            updated=False,
+            installed_version=installed_version,
+            latest_version="unknown",
+            reference_version=reference_version,
+            message="tzdata latest version check skipped or failed",
+        )
+
+    expected_reference = f"{current_year}:{latest_version}"
+    if reference_version == expected_reference and installed_version == latest_version:
+        return TzdataUpdateResult(
+            checked=True,
+            updated=False,
+            installed_version=installed_version,
+            latest_version=latest_version,
+            reference_version=reference_version,
+            message="tzdata already up to date",
+        )
 
     try:
         result: CompletedProcess[str] = subprocess.run(
@@ -373,19 +432,14 @@ def update_tzdata_if_year_changed(
     except Exception as e:
         if logger:
             logger.warning("tzdata update failed", context={"error": str(e)})
-        return False
-
-    try:
-        import tzdata
-
-        tzdata_version: str = getattr(
-            tzdata,
-            "__version__",
-            "unknown",
+        return TzdataUpdateResult(
+            checked=True,
+            updated=False,
+            installed_version=installed_version,
+            latest_version=latest_version,
+            reference_version=reference_version,
+            message=str(e),
         )
-
-    except Exception:
-        tzdata_version = "unknown"
 
     if result.returncode != 0:
         if logger:
@@ -396,10 +450,19 @@ def update_tzdata_if_year_changed(
                     "stderr": result.stderr.strip(),
                 },
             )
-        return False
+        return TzdataUpdateResult(
+            checked=True,
+            updated=False,
+            installed_version=installed_version,
+            latest_version=latest_version,
+            reference_version=reference_version,
+            message=result.stderr.strip() or "tzdata update failed",
+        )
+
+    updated_version = get_installed_tzdata_version()
 
     try:
-        update_state_file.write_text(str(current_year), encoding="utf-8")
+        update_state_file.write_text(f"{current_year}:{updated_version}", encoding="utf-8")
     except Exception as e:
         if logger:
             logger.warning(
@@ -412,13 +475,30 @@ def update_tzdata_if_year_changed(
             "tzdata updated",
             context={
                 "year": current_year,
-                "tzdata_version": tzdata_version,
+                "tzdata_version": updated_version,
+                "latest_version": latest_version,
                 "stdout": result.stdout.strip(),
                 "python": sys.executable,
             },
         )
 
-    return True
+    return TzdataUpdateResult(
+        checked=True,
+        updated=updated_version != installed_version,
+        installed_version=updated_version,
+        latest_version=latest_version,
+        reference_version=f"{current_year}:{updated_version}",
+        message="tzdata updated",
+    )
+
+
+def update_tzdata_if_year_changed(
+    *,
+    state_file: str | None = None,
+    logger: LoggerLike | None = None,
+) -> bool:
+    """後方互換用: tzdata更新が発生したかだけを返す。"""
+    return update_tzdata_if_needed(state_file=state_file, logger=logger).updated
 
 
 if __name__ == "__main__":

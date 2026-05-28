@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from zoneinfo import available_timezones
 
-from logs.time_utils import update_tzdata_if_year_changed
+from logs.time_utils import TzdataUpdateResult, update_tzdata_if_needed
 
 
 @dataclass(slots=True)
@@ -42,9 +42,9 @@ EXCLUDED_PREFIXES: tuple[str, ...] = (
     "Argentina/",
 )
 
-def ensure_tzdata_updated() -> None:
-    """年が変わったタイミングでtzdataの更新を促す関数"""
-    update_tzdata_if_year_changed()
+def ensure_tzdata_updated() -> TzdataUpdateResult:
+    """tzdataの公開最新版を確認し、必要なら更新する。"""
+    return update_tzdata_if_needed()
 
 def is_excluded_prefix(tz: str) -> bool:
     """タイムゾーンが除外対象か判定"""
@@ -112,6 +112,7 @@ def build_tz_label(zone: str) -> str:
 
 def build_timezone_data() -> TimeZoneData:
     """Viewer用のTimeZoneデータをまとめて生成"""
+    ensure_tzdata_updated()
 
     items: list[TimeZoneItem] = build_timezone_items()
 

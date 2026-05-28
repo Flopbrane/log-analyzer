@@ -2,6 +2,16 @@
 
 ---
 
+## Version Scope
+
+This document describes Logger_project Ver.0.9.9.
+
+The local `query_engine/` directory is the TraceQL/query core bundled with this project.
+It is independent from any external `traceql_project` copy.
+Logger/UI code should access it through `logs.traceql_bridge`.
+
+---
+
 ## 🎯 Basic Flow
 
 Logger → Logging → Analysis → Visualization
@@ -99,6 +109,14 @@ python -m logs.log_viewer
 ```
 
 👉 Opens GUI for real-time log inspection
+
+When the Viewer builds TimeZoneData, it may show:
+
+```text
+現在、最新版のTimeZoneDataに書き換え中です。
+```
+
+This means the Viewer is checking/updating the Python `tzdata` package used for local-time display.
 
 #### 🟢 Display Fields
 
@@ -214,6 +232,45 @@ Supported field aliases include:
 | `trace`, `trace_id` | `trace_id` |
 | `output` | `output` |
 | `context` | `context` |
+
+##### ✅ Query Error Suggestions
+
+Incomplete or invalid TraceQL input is reported as a structured query error instead of crashing the Viewer.
+
+Example:
+
+```text
+level:
+```
+
+The detail view can show:
+
+```text
+QUERY ERROR
+Query : level:
+Error : Expected field value at position 6.
+Expected : field value
+
+level:
+     ^
+
+Did you mean:
+- level:ERROR
+- level:WARNING
+- level:INFO
+```
+
+Typo correction is dictionary-based and does not require AI.
+
+```text
+levle:ERROR
+```
+
+can suggest:
+
+```text
+level:ERROR
+```
 
 ##### ✅ Exclude Search
 
@@ -436,6 +493,27 @@ System Monitoring
 
 ```python
 logger.info("cpu_usage", context={"cpu": 30})
+```
+
+### TimeZoneData Update
+
+IANA timezone data is released irregularly when timezone or daylight-saving rules change.
+To explicitly check and update the local Python `tzdata` package:
+
+```bash
+python -m logs.update_tzdata
+```
+
+The reference file is:
+
+```text
+logs/.tzdata_ver_reference
+```
+
+It stores `year:tzdata-version`, for example:
+
+```text
+2026:2026.2
 ```
 
 ---

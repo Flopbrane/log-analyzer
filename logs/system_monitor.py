@@ -11,9 +11,12 @@ from __future__ import annotations
 import subprocess
 from datetime import datetime
 from subprocess import CompletedProcess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from logs.multi_info_logger import AppLogger
@@ -22,9 +25,13 @@ class SystemMonitor:
     """システムの監視を行うクラス"""
     def __init__(self, logger: "AppLogger") -> None:
 
+        if psutil is None:
+            raise RuntimeError("psutil が必要です。pip install psutil を実行してください。")
+
         self.logger: "AppLogger" = logger
         self._last_tick: datetime | None = None
-        self._boot_time: float = psutil.boot_time()
+        self._psutil: Any = psutil
+        self._boot_time: float = self._psutil.boot_time()
 
     def tick(self) -> None:
         """1 tick 分の処理"""
@@ -53,7 +60,7 @@ class SystemMonitor:
 
     def _check_reboot(self, now: datetime) -> bool:
         """システムの再起動を検出する（boot_timeが変わったら）"""
-        current_boot: float = psutil.boot_time()
+        current_boot: float = self._psutil.boot_time()
         reboot_detected: bool = self._boot_time != current_boot
 
         if reboot_detected:
@@ -83,7 +90,7 @@ class SystemMonitor:
 
     def _log_cpu(self) -> None:
         """CPU使用率をログに記録する"""
-        cpu_percent: float = psutil.cpu_percent(interval=None)
+        cpu_percent: float = self._psutil.cpu_percent(interval=None)
 
         self.logger.info(
             "system_cpu_percent",

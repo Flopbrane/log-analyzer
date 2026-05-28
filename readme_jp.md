@@ -1,6 +1,6 @@
 # Info Logger（日本語版）
 
-![version](https://img.shields.io/badge/version-v0.2.0-blue)
+![version](https://img.shields.io/badge/version-v0.9.9-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
@@ -8,6 +8,19 @@
 
 Info Logger は、  
 **ログ出力・分析・可視化を一体化したログシステム**です。
+
+---
+
+## ✨ 現在の仕様状態: Ver.0.9.9
+
+Ver.0.9.9 は、1.0直前の完成度を持つプレリリース版です。
+
+- `query_engine/` は、このLogger_project内部の独立した TraceQL / query core として扱います。
+- Logger / Viewer 側から `query_engine` へ入る入口は `logs/traceql_bridge.py` に統一しています。
+- 検索構文エラーでGUIを落とさず、`QUERY ERROR` として解析可能なイベントにします。
+- エラー表示には query、caret位置、期待構文、辞書ベースの候補を含めます。
+- 内部時刻はUTC、Viewer表示は選択中のローカルタイムゾーンです。
+- `tzdata` は `logs/.tzdata_ver_reference` で `年:tzdata-version` を記録します。
 
 ---
 
@@ -69,7 +82,9 @@ Info Logger は、
 ### 🕒 時刻管理
 
 - 内部処理：UTC
-- 表示：ローカル時間（JST）
+- 表示：Viewerで選択したローカル時間
+- `logs/.tzdata_ver_reference` に確認済みの `年:tzdata-version` を記録
+- `python -m logs.update_tzdata` で TimeZoneData を明示更新可能
 
 ---
 
@@ -78,6 +93,26 @@ Info Logger は、
 - 高度な検索判定は `logs/traceql_bridge.py` を経由
 - `logs` 側から `query_engine` を直接 import しない設計
 - LogDict を TraceQL 用 Document に変換してから解析
+
+---
+
+### 🧭 Query Error レポート
+
+- `level:` のような未完成クエリを `QUERY ERROR` として表示
+- エラー位置を `^` で表示
+- `logs/error_response_dict.py` の辞書を使って候補を提示
+
+例:
+
+```text
+level:
+     ^
+
+Did you mean:
+- level:ERROR
+- level:WARNING
+- level:INFO
+```
 
 ---
 
@@ -95,9 +130,9 @@ Info Logger は、
 ### ① クローン
 
 ```bash
-git clone https://github.com/yourname/Info_Logger.git
+git clone https://github.com/Flopbrane/log-analyzer.git
 
-cd Info_Logger
+cd log-analyzer
 ```
 
 ---
@@ -211,11 +246,14 @@ query_engine
 `logs` パッケージ内で `query_engine` を直接 import してよいのは、原則として `logs/traceql_bridge.py` のみです。
 Viewer、表示整形、Logger固有処理を、再利用可能な検索コアから分離するためのルールです。
 
+このリポジトリ内の `query_engine/` は、外部の `traceql_project` とは切り離して扱います。
+たとえば `traceql/logger_window/query_engine/` が変更されても、Logger_project内部の `query_engine/` には自動反映しません。
+
 ---
 
 ## 🗄️ 大容量ログとSQLite検索
 
-Ver.0.2.0 では、巨大なJSONLログを扱うための SQLite アダプターを追加しています。
+Ver.0.9.9 では、巨大なJSONLログを扱うための SQLite アダプターを含んでいます。
 
 ```python
 from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
@@ -235,10 +273,31 @@ for batch in store.iter_search("context.cpu_percent >= 80", batch_size=1000):
 
 Logger Viewer から利用する場合は、`logs.traceql_bridge` を通して受け渡す方針です。
 
+## 🕒 TimeZoneData 更新
+
+IANA tzdata は、サマータイムや政治的なタイムゾーン変更があるたびに不定期で更新されます。
+Logger本体はUTCで記録しますが、Viewerのローカル時刻表示には最新のTimeZoneDataが重要です。
+
+```bash
+python -m logs.update_tzdata
+```
+
+基準ファイル:
+
+```text
+logs/.tzdata_ver_reference
+```
+
+形式:
+
+```text
+2026:2026.2
+```
+
 ## 📚 詳細ドキュメント
 
 - 設計書 → docs/Design.md
-- 使い方 → docs/How_to_use.md
+- 使い方 → docs_jp/How_To_Use_JP.md
 
 ---
 

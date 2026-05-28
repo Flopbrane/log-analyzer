@@ -9,13 +9,9 @@ from typing import Any, Iterable, Mapping, cast
 from zoneinfo import ZoneInfo
 
 from logs.log_types import LogDict
-
-# TRACEQL_ROOT = Path(__file__).resolve().parents[2]
-# if str(TRACEQL_ROOT) not in sys.path:
-#     sys.path.insert(0, str(TRACEQL_ROOT))
-from query_engine.evaluators.memory import match_query  # noqa: E402
-from query_engine.models import Document  # noqa: E402
-from query_engine.parser import QuerySyntaxError  # noqa: E402
+from query_engine.evaluators.memory import match_query
+from query_engine.models import Document
+from query_engine.parser import QuerySyntaxError
 
 SORT_PATTERN: re.Pattern[str] = re.compile(
     r"^(?P<body>.*?)"

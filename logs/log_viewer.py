@@ -42,6 +42,7 @@ from logs.openai_key_store import (
     is_keyring_available,
     save_openai_api_key,
 )
+from logs.query_error_bridge import build_query_error_text
 from logs.search_matcher import (
     apply_result_modifiers,
     match_search_query,
@@ -121,7 +122,7 @@ class LogViewer:
         self.aggregate_result_var = tk.StringVar()
 
         # ===== TimeZoneデータ =====
-        self.tz_data: TimeZoneData = build_timezone_data()
+        self.tz_data: TimeZoneData = self._build_timezone_data_with_dialog()
         self.current_tz: str = self._load_timezone()
         self.current_area: str = self.current_tz.split("/", 1)[0]
         self._area_label_to_area: dict[str, str] = {}
@@ -176,6 +177,38 @@ class LogViewer:
 
         if not loaded_configured_logs and initial_log_path is not None:
             self.reload_log(initial_log_path)
+
+    def _build_timezone_data_with_dialog(self) -> TimeZoneData:
+        """TimezoneData更新中であることをユーザーに表示してから構築する。"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("TimeZoneData")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        tk.Label(
+            dialog,
+            text="現在、最新版のTimeZoneDataに書き換え中です。",
+            padx=24,
+            pady=18,
+        ).pack()
+        dialog.update_idletasks()
+
+        root_x = self.root.winfo_rootx()
+        root_y = self.root.winfo_rooty()
+        root_width = max(self.root.winfo_width(), 1)
+        root_height = max(self.root.winfo_height(), 1)
+        dialog_width = dialog.winfo_width()
+        dialog_height = dialog.winfo_height()
+        x = root_x + (root_width - dialog_width) // 2
+        y = root_y + (root_height - dialog_height) // 2
+        dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        dialog.update()
+
+        try:
+            return build_timezone_data()
+        finally:
+            dialog.grab_release()
+            dialog.destroy()
 
     def _load_window_geometry(self) -> str:
         """設定ファイルからウィンドウ位置/サイズを取得する。"""
@@ -1087,26 +1120,7 @@ class LogViewer:
         if not isinstance(error, str) or not error:
             return ""
 
-        lines: list[str] = [
-            "QUERY ERROR",
-            "=" * 60,
-            f"Query : {query}",
-            f"Error : {error}",
-        ]
-
-        match: re.Match[str] | None = re.search(r"position\s+(\d+)", error, flags=re.IGNORECASE)
-        if match:
-            position = int(match.group(1))
-            caret_index: int = max(position - 1, 0)
-            lines.extend(
-                [
-                    "",
-                    query,
-                    " " * caret_index + "^",
-                ]
-            )
-
-        return "\n".join(lines)
+        return build_query_error_text(query, error)
 
     def _get_event(
         self,

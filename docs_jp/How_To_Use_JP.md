@@ -2,6 +2,16 @@
 
 ---
 
+## 対象バージョン
+
+この文書は Logger_project Ver.0.9.9 の仕様を説明します。
+
+このプロジェクト内の `query_engine/` は、Logger_project に同梱された TraceQL / query core です。
+外部の `traceql_project` とは切り離して扱います。
+Logger / Viewer 側からは `logs.traceql_bridge` を入口にしてください。
+
+---
+
 ## 🎯 基本の流れ
 
 - logger取得 → ログ出力 → ログ解析 → 表示
@@ -87,9 +97,15 @@ for e in events:
 
 ```bash
 python -m logs.log_viewer
-# あるいは
-python run_viewer.py
 ```
+
+ViewerがTimeZoneDataを構築するとき、必要に応じて以下の表示を出します。
+
+```text
+現在、最新版のTimeZoneDataに書き換え中です。
+```
+
+これはローカル時刻表示に使う Python `tzdata` の確認・更新中であることを示します。
 
 ---
 
@@ -279,6 +295,47 @@ context:gpu_mem_total_mb
 
 ```text
 trace_id:fc036f388b7542c48117d55c8ec1728c
+```
+
+---
+
+### 🔵 Query Error 候補表示
+
+未完成または不正なTraceQL入力は、GUIを落とさず `QUERY ERROR` として表示します。
+
+例:
+
+```text
+level:
+```
+
+詳細表示では次のようなレポートになります。
+
+```text
+QUERY ERROR
+Query : level:
+Error : Expected field value at position 6.
+Expected : field value
+
+level:
+     ^
+
+Did you mean:
+- level:ERROR
+- level:WARNING
+- level:INFO
+```
+
+typo も辞書ベースで候補を出します。AIは不要です。
+
+```text
+levle:ERROR
+```
+
+候補:
+
+```text
+level:ERROR
 ```
 
 ---
@@ -594,6 +651,31 @@ logger.error("処理失敗", status="failed")
 
 ```python
 logger.info("cpu_usage", context={"cpu": 30})
+```
+
+---
+
+### TimeZoneData更新
+
+IANA tzdata は、サマータイムや政治的なタイムゾーン変更に応じて不定期に更新されます。
+Logger本体はUTCで記録しますが、Viewerのローカル時刻表示には最新のTimeZoneDataが重要です。
+
+明示的に更新確認する場合:
+
+```bash
+python -m logs.update_tzdata
+```
+
+基準ファイル:
+
+```text
+logs/.tzdata_ver_reference
+```
+
+形式:
+
+```text
+2026:2026.2
 ```
 
 ---
