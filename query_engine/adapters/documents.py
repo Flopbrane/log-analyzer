@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 from typing import Any, Mapping
 
+from query_engine.adapters.base import normalize_document
 from query_engine.models import Document
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
@@ -22,12 +23,13 @@ class TextDocument:
 
     def to_document(self) -> Document:
         """評価器へ渡せる辞書形式へ変換する。"""
-        return {
-            "title": self.title,
-            "text": self.text,
-            "source": self.source,
-            "metadata": dict(self.metadata),
-        }
+        return normalize_document(
+            {},
+            title=self.title,
+            text=self.text,
+            source=self.source,
+            metadata=self.metadata,
+        ).to_mapping()
 
 
 def normalize_text(text: str) -> str:

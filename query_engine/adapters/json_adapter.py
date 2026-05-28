@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
+from json import JSONDecodeError
 from pathlib import Path
-from typing import cast
+from typing import Iterator, cast
 
+from query_engine.adapters.base import normalize_document
 from query_engine.adapters.tabular import Record, rows_to_documents
 from query_engine.models import Document
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentLoadIssue:
+    """Non-fatal adapter issue found while streaming input."""
+
+    source: str
+    line_number: int | None
+    message: str
 
 
 class JsonAdapter:
@@ -29,6 +41,9 @@ class JsonAdapter:
 
     def documents(self) -> list[Document]:
         return json_to_documents(self.load_file_path)
+
+    def iter_documents(self) -> Iterator[Document]:
+        yield from iter_json_documents(self.load_file_path)
 
     def _load_json(self) -> list[Record]:
         data: object = json.loads(self.load_file_path.read_text(encoding="utf-8"))
@@ -58,6 +73,61 @@ class JsonAdapter:
         return rows
 
 
+def iter_json_records(
+    path: str | Path,
+    *,
+    issues: list[DocumentLoadIssue] | None = None,
+    encoding: str = "utf-8",
+) -> Iterator[Record]:
+    """Stream JSON/JSONL records, skipping broken JSONL lines."""
+    json_path = Path(path)
+    if json_path.suffix.lower() != ".jsonl":
+        for record in load_json(json_path):
+            yield record
+        return
+
+    with json_path.open("r", encoding=encoding, errors="replace") as file:
+        for line_number, line in enumerate(file, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                yield _coerce_record(json.loads(stripped))
+            except JSONDecodeError as exc:
+                if issues is not None:
+                    issues.append(
+                        DocumentLoadIssue(
+                            source=str(json_path),
+                            line_number=line_number,
+                            message=str(exc),
+                        )
+                    )
+
+
+def iter_json_documents(
+    path: str | Path,
+    *,
+    issues: list[DocumentLoadIssue] | None = None,
+    encoding: str = "utf-8",
+) -> Iterator[Document]:
+    """Stream normalized documents from JSON/JSONL."""
+    json_path = Path(path)
+    for row_number, record in enumerate(
+        iter_json_records(json_path, issues=issues, encoding=encoding),
+        start=1,
+    ):
+        yield normalize_document(
+            record,
+            id=f"{json_path}:{row_number}",
+            source=str(json_path),
+            metadata={
+                "source": str(json_path),
+                "row_number": row_number,
+                "format": json_path.suffix.lower().lstrip("."),
+            },
+        ).to_mapping()
+
+
 def load_json(path: str | Path) -> list[Record]:
     """JSON/JSONLをlist[dict]へ変換する。"""
     return JsonAdapter(path).load()
@@ -65,8 +135,7 @@ def load_json(path: str | Path) -> list[Record]:
 
 def json_to_documents(path: str | Path) -> list[Document]:
     """JSON/JSONLの各レコードをQuery Engineで検索できるDocumentへ変換する。"""
-    json_path = Path(path)
-    return rows_to_documents(load_json(json_path), source=str(json_path), table=json_path.stem)
+    return list(iter_json_documents(path))
 
 
 def _coerce_record(value: object) -> Record:

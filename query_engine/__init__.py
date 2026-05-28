@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from query_engine.adapters import (
     CsvAdapter,
+    DocumentAdapter,
+    DocumentLoadIssue,
     JsonAdapter,
     TextDocument,
     TextTableAdapter,
@@ -10,12 +12,15 @@ from query_engine.adapters import (
     extract_text_file,
     from_text,
     from_text_file,
+    iter_json_documents,
+    iter_json_records,
     json_to_documents,
     load_csv,
     load_json,
     load_text_table,
     log_to_document,
     normalize_text,
+    normalize_document,
     row_to_document,
     rows_to_documents,
     text_table_to_documents,
@@ -34,13 +39,15 @@ from query_engine.ast import (
 )
 from query_engine.evaluators.memory import match_query, search
 from query_engine.evaluators.sql import SqlCompileResult, compile_sql_where
-from query_engine.models import SearchQuery, SearchResult, SortSpec
+from query_engine.models import QueryDocument, SearchQuery, SearchResult, SortSpec
 from query_engine.parser import GRAMMAR, QuerySyntaxError, parse, parse_query, tokenize
 
 __all__: list[str] = [
     "AndNode",
     "CompareNode",
     "CsvAdapter",
+    "DocumentAdapter",
+    "DocumentLoadIssue",
     "EmptyNode",
     "FieldNode",
     "GRAMMAR",
@@ -49,6 +56,7 @@ __all__: list[str] = [
     "OrNode",
     "PhraseNode",
     "QueryNode",
+    "QueryDocument",
     "QuerySyntaxError",
     "RegexNode",
     "SearchQuery",
@@ -63,6 +71,8 @@ __all__: list[str] = [
     "extract_text_file",
     "from_text",
     "from_text_file",
+    "iter_json_documents",
+    "iter_json_records",
     "json_to_documents",
     "load_csv",
     "load_json",
@@ -70,6 +80,7 @@ __all__: list[str] = [
     "log_to_document",
     "match_query",
     "normalize_text",
+    "normalize_document",
     "parse",
     "parse_query",
     "row_to_document",

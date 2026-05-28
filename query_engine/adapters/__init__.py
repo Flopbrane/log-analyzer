@@ -3,7 +3,15 @@ from __future__ import annotations
 
 from query_engine.adapters.documents import TextDocument, from_text, from_text_file, normalize_text
 from query_engine.adapters.extractors import extract_text_file
-from query_engine.adapters.json_adapter import JsonAdapter, json_to_documents, load_json
+from query_engine.adapters.base import DocumentAdapter, normalize_document
+from query_engine.adapters.json_adapter import (
+    DocumentLoadIssue,
+    JsonAdapter,
+    iter_json_documents,
+    iter_json_records,
+    json_to_documents,
+    load_json,
+)
 from query_engine.adapters.logs import log_to_document
 from query_engine.adapters.sqlite_adapter import (
     SQLiteDocumentStore,
@@ -22,6 +30,8 @@ from query_engine.adapters.text_table_adapter import (
 
 __all__: list[str] = [
     "CsvAdapter",
+    "DocumentAdapter",
+    "DocumentLoadIssue",
     "JsonAdapter",
     "Record",
     "SQLiteDocumentStore",
@@ -33,11 +43,14 @@ __all__: list[str] = [
     "from_text",
     "from_text_file",
     "json_to_documents",
+    "iter_json_documents",
+    "iter_json_records",
     "load_csv",
     "load_json",
     "load_text_table",
     "log_to_document",
     "normalize_text",
+    "normalize_document",
     "row_to_document",
     "rows_to_documents",
     "documents_to_sqlite",

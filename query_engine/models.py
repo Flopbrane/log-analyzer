@@ -11,6 +11,32 @@ SortDirection: TypeAlias = Literal["asc", "desc"]
 
 
 @dataclass(frozen=True, slots=True)
+class QueryDocument:
+    """Stable document schema used by adapters and evaluators."""
+
+    id: str = ""
+    title: str = ""
+    text: str = ""
+    source: str = ""
+    fields: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def to_mapping(self) -> Document:
+        """Return a backward-compatible mapping for existing evaluators."""
+        fields = dict(self.fields)
+        metadata = dict(self.metadata)
+        return {
+            **fields,
+            "id": self.id,
+            "title": self.title,
+            "text": self.text,
+            "source": self.source,
+            "fields": fields,
+            "metadata": metadata,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SortSpec:
     field: str
     direction: SortDirection = "asc"
