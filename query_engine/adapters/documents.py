@@ -1,9 +1,9 @@
 """一般文書を検索対象のDocumentへ変換するアダプタ。"""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-import re
 from typing import Any, Mapping
 
 from query_engine.adapters.base import normalize_document
@@ -19,7 +19,7 @@ class TextDocument:
     text: str
     title: str = ""
     source: str = ""
-    metadata: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, Any] = field(default_factory=lambda: {})
 
     def to_document(self) -> Document:
         """評価器へ渡せる辞書形式へ変換する。"""

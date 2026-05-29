@@ -47,14 +47,14 @@ def load_text_table(
     table_path = Path(path)
 
     with table_path.open("r", encoding=encoding, newline="") as file:
-        sample = file.read(4096)
+        sample: str = file.read(4096)
         file.seek(0)
 
         detected_delimiter: None | Literal[','] | Literal['\t'] | Literal[';'] | Literal['|'] = delimiter or _detect_delimiter(sample)
         if detected_delimiter is None:
             return _load_space_aligned_table(file.readlines())
 
-        reader = csv.DictReader(file, delimiter=detected_delimiter)
+        reader: csv.DictReader[str] = csv.DictReader(file, delimiter=detected_delimiter)
         return [{str(key): value for key, value in row.items()} for row in reader]
 
 

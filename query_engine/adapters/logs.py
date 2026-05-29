@@ -13,9 +13,9 @@ def log_to_document(log: Mapping[str, Any]) -> Document:
 
     Logger専用型へは依存せず、一般的なキーだけを緩く拾います。
     """
-    message = _first_text(log, "message", "msg", "text")
-    level = _first_text(log, "level", "severity")
-    timestamp = _first_text(log, "time", "timestamp", "created_at")
+    message: str = _first_text(log, "message", "msg", "text")
+    level: str = _first_text(log, "level", "severity")
+    timestamp: str = _first_text(log, "time", "timestamp", "created_at")
     return normalize_document(
         {
             "level": level,

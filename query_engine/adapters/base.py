@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from typing import Any, Mapping, Protocol, runtime_checkable
+from typing import Any, Mapping, Protocol, cast, runtime_checkable
 
 from query_engine.models import Document, QueryDocument
 from query_engine.utils import flatten_text
@@ -30,21 +30,26 @@ def normalize_document(
     if isinstance(value, QueryDocument):
         return value
 
-    fields = dict(value)
+    fields: dict[str, Any] = dict(value)
     doc_id = str(fields.pop("id", id) or "")
     doc_title = str(fields.pop("title", title) or "")
     doc_text = str(fields.pop("text", text) or "")
     doc_source = str(fields.pop("source", source) or "")
-    existing_metadata = fields.pop("metadata", {})
     merged_metadata: dict[str, Any] = {}
+    existing_metadata: object = fields.pop("metadata", {})
     if isinstance(existing_metadata, Mapping):
-        merged_metadata.update(dict(existing_metadata))
+        metadata_mapping: Mapping[str, Any] = cast(
+            Mapping[str, Any],
+            existing_metadata,
+        )
+        merged_metadata.update(dict(metadata_mapping))
+    existing_metadata: object = fields.pop("metadata", {})
     if metadata is not None:
         merged_metadata.update(dict(metadata))
     if not doc_text:
-        doc_text = flatten_text(fields)
+        doc_text: str = flatten_text(fields)
     if not doc_title:
-        doc_title = _first_non_empty_text(fields)
+        doc_title: str = _first_non_empty_text(fields)
     return QueryDocument(
         id=doc_id,
         title=doc_title[:120],

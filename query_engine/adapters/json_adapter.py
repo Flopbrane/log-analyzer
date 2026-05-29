@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Iterator, cast
+from typing import Any, Iterator, cast
 
 from query_engine.adapters.base import normalize_document
 from query_engine.adapters.tabular import Record
@@ -49,12 +49,12 @@ class JsonAdapter:
         data: object = json.loads(self.load_file_path.read_text(encoding="utf-8"))
 
         if isinstance(data, list):
-            items = cast("list[object]", data)
+            items: list[object] = cast("list[object]", data)
             return [_coerce_record(item) for item in items]
 
         if isinstance(data, dict):
-            record = cast(Record, data)
-            rows = _find_embedded_rows(record)
+            record= cast(Record, data)
+            rows: list[dict[str, Any]] | None = _find_embedded_rows(record)
             if rows is not None:
                 return rows
             return [record]
@@ -65,7 +65,7 @@ class JsonAdapter:
         rows: list[Record] = []
         with self.load_file_path.open("r", encoding="utf-8") as file:
             for line in file:
-                line = line.strip()
+                line: str = line.strip()
                 if not line:
                     continue
                 rows.append(_coerce_record(json.loads(line)))
@@ -88,7 +88,7 @@ def iter_json_records(
 
     with json_path.open("r", encoding=encoding, errors="replace") as file:
         for line_number, line in enumerate(file, start=1):
-            stripped = line.strip()
+            stripped: str = line.strip()
             if not stripped:
                 continue
             try:
