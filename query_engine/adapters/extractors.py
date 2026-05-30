@@ -1,4 +1,11 @@
+# -*- coding: utf-8 -*-
 """外部文書ファイルから検索用TextDocumentを作成する抽出器。"""
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
+
 from __future__ import annotations
 
 from html.parser import HTMLParser
