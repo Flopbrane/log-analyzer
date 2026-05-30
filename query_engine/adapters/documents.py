@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from query_engine.adapters.base import normalize_document
 from query_engine.models import Document
 
-WHITESPACE_PATTERN = re.compile(r"\s+")
+WHITESPACE_PATTERN: re.Pattern[str] = re.compile(r"\s+")
 
 
 @dataclass(frozen=True, slots=True)

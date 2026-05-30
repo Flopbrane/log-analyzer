@@ -5,19 +5,7 @@ import re
 from dataclasses import dataclass
 from typing import cast
 
-from query_engine.ast import (
-    AndNode,
-    CompareNode,
-    CompareOperator,
-    EmptyNode,
-    FieldNode,
-    NotNode,
-    OrNode,
-    PhraseNode,
-    QueryNode,
-    RegexNode,
-    TermNode,
-)
+from query_engine.ast import AndNode, CompareNode, CompareOperator, EmptyNode, FieldNode, NotNode, OrNode, PhraseNode, QueryNode, RegexNode, TermNode
 from query_engine.grammar import COMPARE_OPERATORS, GRAMMAR, IDENT_PATTERN, TokenKind
 from query_engine.models import SearchQuery
 

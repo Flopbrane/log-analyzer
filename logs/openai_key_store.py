@@ -2,11 +2,15 @@
 """OpenAI API KeyをScriptへ直書きせずOS資格情報ストアで扱う。"""
 from __future__ import annotations
 
+from typing import Any
+
+from openai import OpenAI  # type: ignore[import-not-found]
+
 SERVICE_NAME = "logger_project_openai"
 ACCOUNT_NAME = "OPENAI_API_KEY"
 
 
-def _load_keyring():
+def _load_keyring() -> None | Any:
     try:
         import keyring  # type: ignore[import-not-found]
     except ImportError:
@@ -17,6 +21,18 @@ def _load_keyring():
 def is_keyring_available() -> bool:
     """keyringが利用可能ならTrue。"""
     return _load_keyring() is not None
+
+
+def create_openai_client() -> OpenAI:
+    api_key: str | None = get_openai_api_key()
+
+    if not api_key:
+        raise RuntimeError("OpenAI API Key not found")
+
+    try:
+        return OpenAI(api_key=api_key)
+    finally:
+        api_key = None
 
 
 def get_openai_api_key() -> str | None:

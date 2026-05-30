@@ -14,7 +14,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from query_engine.evaluators.sql import compile_sql_where
+from query_engine.evaluators.sql import SqlCompileResult, compile_sql_where
 from query_engine.models import Document, SearchResult
 from query_engine.utils import flatten_text
 
@@ -32,7 +32,7 @@ class SQLiteDocumentStore:
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
-        self.connection = sqlite3.connect(str(self.path))
+        self.connection: sqlite3.Connection = sqlite3.connect(str(self.path))
         self.connection.row_factory = sqlite3.Row
         self.connection.create_function("REGEXP", 2, _regexp)
         self.initialize()
@@ -113,12 +113,12 @@ class SQLiteDocumentStore:
         limit: int | None,
         offset: int | None,
     ) -> tuple[str, tuple[object, ...]]:
-        compiled = compile_sql_where(
+        compiled: SqlCompileResult = compile_sql_where(
             query,
             text_column="text",
             field_mapper=_json_field_mapper,
         )
-        sql = f"SELECT data FROM documents WHERE {compiled.where_sql} ORDER BY id"
+        sql: str = f"SELECT data FROM documents WHERE {compiled.where_sql} ORDER BY id"
         params: list[object] = list(compiled.params)
         if limit is not None:
             sql += " LIMIT ?"

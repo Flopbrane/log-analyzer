@@ -40,6 +40,6 @@ def flatten_text(value: Any) -> str:
             parts.append(flatten_text(child))
         return " ".join(part for part in parts if part)
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        sequence = cast("Sequence[object]", value)
+        sequence: Sequence[object] = cast("Sequence[object]", value)
         return " ".join(flatten_text(child) for child in sequence)
     return str(value)

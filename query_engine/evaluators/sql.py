@@ -9,17 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from query_engine.ast import (
-    AndNode,
-    CompareNode,
-    EmptyNode,
-    FieldNode,
-    NotNode,
-    PhraseNode,
-    QueryNode,
-    RegexNode,
-    TermNode,
-)
+from query_engine.ast import AndNode, CompareNode, EmptyNode, FieldNode, NotNode, PhraseNode, QueryNode, RegexNode, TermNode
 from query_engine.models import SearchQuery
 from query_engine.parser import parse_query
 

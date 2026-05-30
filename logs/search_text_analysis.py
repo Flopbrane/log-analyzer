@@ -12,30 +12,11 @@ import re
 import shlex
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import cast
+
 from zoneinfo import ZoneInfo
 
-from logs.search_ast import (
-    AndNode,
-    CompareNode,
-    EmptyNode,
-    FieldNode,
-    NotNode,
-    OrNode,
-    QueryNode,
-    RegexNode,
-    SimilarNode,
-    TermNode,
-)
-from logs.search_models import (
-    AggregateFunction,
-    AggregateQuery,
-    CompareOperator,
-    FieldFilter,
-    IgnoreRule,
-    SearchQuery,
-    SortDirection,
-    SortSpec,
-)
+from logs.search_ast import AndNode, CompareNode, EmptyNode, FieldNode, NotNode, OrNode, QueryNode, RegexNode, SimilarNode, TermNode
+from logs.search_models import AggregateFunction, AggregateQuery, CompareOperator, FieldFilter, IgnoreRule, SearchQuery, SortDirection, SortSpec
 
 COMPARE_PATTERN: re.Pattern[str] = re.compile(
     r"^(?P<field>[A-Za-z_][\w.]*)"

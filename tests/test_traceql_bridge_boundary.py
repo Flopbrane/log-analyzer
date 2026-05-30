@@ -8,7 +8,6 @@ from typing import Any, cast
 from logs.log_types import LogDict
 from logs.traceql_bridge import analyze_logs_for_viewer, filter_logs_for_viewer
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 

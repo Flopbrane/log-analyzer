@@ -103,7 +103,7 @@ def build_viewer_with_logs(paths: list[Path]) -> tuple[tk.Tk, lv.LogViewer]:
     # 🔥 summarizeしない
     viewer.raw_rows = logs
 
-    viewer.rows = summarize(logs)  # ここは summarize を通す（Event化）
+    viewer.event_rows = summarize(logs)  # ここは summarize を通す（Event化）
 
     viewer.update_filters()
     viewer.apply_filter()
@@ -138,7 +138,7 @@ def debug_range_parse(viewer: lv.LogViewer, query: str) -> str:
         return ""
 
     try:
-        parsed = parse_query(query, viewer.current_tz)
+        parsed: lv.SearchQuery = parse_query(query, viewer.current_tz)
         return f"parse_query -> start={parsed.start!s}, end={parsed.end!s}"
     except Exception as exc:  # pylint: disable=broad-exception-caught
         return f"parse_query ERROR -> {exc!r}"
@@ -164,7 +164,7 @@ def main() -> int:
     print()
     print(f"loaded raw logs: {len(viewer.raw_rows)}")
     print(f"loaded filtered logs: {len(viewer.filtered_rows)}")
-    print(f"loaded events: {len(viewer.rows)}")
+    print(f"loaded events: {len(viewer.event_rows)}")
     print(f"timezone: {viewer.current_tz}")
     print()
     # 前回の独自テスターで期待していた件数。

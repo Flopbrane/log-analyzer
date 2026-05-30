@@ -6,4 +6,4 @@ from __future__ import annotations
 
 from query_engine.evaluators.memory import match_node, match_query, search
 
-__all__ = ["match_node", "match_query", "search"]
+__all__: list[str] = ["match_node", "match_query", "search"]

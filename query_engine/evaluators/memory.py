@@ -5,17 +5,7 @@ import operator
 import re
 from typing import Any, Callable, Iterable
 
-from query_engine.ast import (
-    AndNode,
-    CompareNode,
-    EmptyNode,
-    FieldNode,
-    NotNode,
-    PhraseNode,
-    QueryNode,
-    RegexNode,
-    TermNode,
-)
+from query_engine.ast import AndNode, CompareNode, EmptyNode, FieldNode, NotNode, PhraseNode, QueryNode, RegexNode, TermNode
 from query_engine.models import Document, SearchQuery, SearchResult
 from query_engine.parser import parse_query
 from query_engine.utils import flatten_text, get_path

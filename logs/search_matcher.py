@@ -461,13 +461,13 @@ def run_aggregate_query(
             value: object = len(matched_logs)
             value_count: int = len(matched_logs)
         else:
-            values: list[object] = []
+            count_values: list[object] = []
             for log in matched_logs:
-                values.extend(get_aggregate_values(log, aggregate))
-            value = len(values)
-            value_count = len(values)
+                count_values.extend(get_aggregate_values(log, aggregate))
+            value = len(count_values)
+            value_count = len(count_values)
 
-        message = (
+        message: str = (
             f"{function} {field} = {_format_aggregate_value(value)} "
             f"(logs={len(matched_logs)}, values={value_count})"
         )

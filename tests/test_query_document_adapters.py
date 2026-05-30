@@ -7,11 +7,12 @@ from pathlib import Path
 from query_engine.adapters.base import normalize_document
 from query_engine.adapters.json_adapter import DocumentLoadIssue, iter_json_documents
 from query_engine.adapters.tabular import row_to_document
+from query_engine.models import Document
 
 
 class QueryDocumentAdapterTests(unittest.TestCase):
     def test_normalize_document_keeps_stable_schema(self) -> None:
-        document = normalize_document(
+        document: Document = normalize_document(
             {"level": "ERROR", "message": "disk failure"},
             id="log-1",
             source="memory",
@@ -26,7 +27,7 @@ class QueryDocumentAdapterTests(unittest.TestCase):
         self.assertEqual(10, document["metadata"]["line"])
 
     def test_row_to_document_uses_schema_compatible_mapping(self) -> None:
-        document = row_to_document(
+        document: Document = row_to_document(
             {"cpu": 82.5, "status": "warning"},
             source="metrics.csv",
             table="metrics",
@@ -40,7 +41,7 @@ class QueryDocumentAdapterTests(unittest.TestCase):
 
     def test_iter_json_documents_skips_broken_jsonl_lines(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            path = Path(tmp_dir) / "logs.jsonl"
+            path: Path = Path(tmp_dir) / "logs.jsonl"
             path.write_text(
                 '{"level": "INFO", "message": "ok"}\n'
                 '{"level": "BROKEN", "message": \n'
@@ -49,7 +50,7 @@ class QueryDocumentAdapterTests(unittest.TestCase):
             )
 
             issues: list[DocumentLoadIssue] = []
-            documents = list(iter_json_documents(path, issues=issues))
+            documents: list[Document] = list(iter_json_documents(path, issues=issues))
 
         self.assertEqual(2, len(documents))
         self.assertEqual(["INFO", "ERROR"], [doc["level"] for doc in documents])
