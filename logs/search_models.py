@@ -35,12 +35,14 @@ class SortSpec:
 
 @dataclass(slots=True)
 class FieldFilter:
+    """特定フィールドに対する単純な部分一致条件。"""
     field: str
     value: str
 
 
 @dataclass(slots=True)
 class SearchableLog:
+    """検索可能なログエントリ。"""
     raw: LogDict
     blob: str
 

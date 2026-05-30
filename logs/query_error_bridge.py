@@ -6,10 +6,10 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any, Mapping, Sequence
+
 from zoneinfo import ZoneInfo
 
-from logs.error_response_dict import (DATETIME_FIELDS, EXPECTED_HINTS, FIELD_ALIASES,
-                                      FIELD_VALUE_SUGGESTIONS, KNOWN_FIELDS)
+from logs.error_response_dict import DATETIME_FIELDS, EXPECTED_HINTS, FIELD_ALIASES, FIELD_VALUE_SUGGESTIONS, KNOWN_FIELDS
 
 POSITION_PATTERN: re.Pattern[str] = re.compile(r"position\s+(\d+)", flags=re.IGNORECASE)
 FIELD_PREFIX_PATTERN: re.Pattern[str] = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*:\s*$")
@@ -26,6 +26,7 @@ class QueryErrorResponse:
     suggestions: tuple[str, ...]
 
     def format_report(self) -> str:
+        """Viewer表示用の構文エラーレポート文字列を生成する。"""
         lines: list[str] = [
             "QUERY ERROR",
             "=" * 60,
@@ -75,6 +76,7 @@ def build_query_error_text(
 
 
 def _extract_position(error: str) -> int | None:
+    """エラーメッセージからエラー位置を抽出する。見つからない場合はNone。"""
     match: re.Match[str] | None = POSITION_PATTERN.search(error)
     if match is None:
         return None
@@ -82,7 +84,8 @@ def _extract_position(error: str) -> int | None:
 
 
 def _classify_expected(error: str) -> str:
-    lowered = error.lower()
+    """エラーメッセージから期待される値の種類を分類する。"""
+    lowered: str = error.lower()
     if "expected field value" in lowered:
         return EXPECTED_HINTS["field_value"]
     if "expected numeric value" in lowered:
@@ -100,13 +103,20 @@ def _build_suggestions(
     rows: Sequence[Mapping[str, Any]],
     timezone_name: str,
 ) -> list[str]:
+    """query/error文字列から候補リストを生成する。"""
     stripped: str = query.strip()
     field_match: re.Match[str] | None = FIELD_PREFIX_PATTERN.fullmatch(stripped)
     if field_match is not None and expected == EXPECTED_HINTS["field_value"]:
         field: str = _normalize_field(field_match.group(1))
         values: tuple[str, ...] = _field_value_suggestions(field, rows, timezone_name)
         return [f"{field}:{value}" for value in values]
-
+    
+    value: str = stripped.split(":", 1)[-1].strip() if ":" in stripped else ""
+    
+    if value:
+        close_values: list[str] = difflib.get_close_matches(value, FIELD_VALUE_SUGGESTIONS.get(expected, ()), n=3, cutoff=0.72)
+        return close_values
+    
     if ":" in stripped:
         field, value = stripped.split(":", 1)
         normalized: str = _normalize_field(field.strip())
@@ -114,6 +124,7 @@ def _build_suggestions(
             return [f"{normalized}:{value.strip()}"]
 
     first_word: str = stripped.split(":", 1)[0].split(" ", 1)[0].strip()
+
     if first_word:
         close_fields: list[str] = difflib.get_close_matches(first_word, KNOWN_FIELDS, n=3, cutoff=0.72)
         return [f"{field}:" for field in close_fields]
@@ -122,6 +133,7 @@ def _build_suggestions(
 
 
 def _normalize_field(field: str) -> str:
+    """フィールド名を正規化する。"""
     lowered: str = field.lower()
     if lowered in FIELD_ALIASES:
         return FIELD_ALIASES[lowered]
@@ -136,6 +148,7 @@ def _field_value_suggestions(
     rows: Sequence[Mapping[str, Any]],
     timezone_name: str,
 ) -> tuple[str, ...]:
+    """フィールド名から値の候補を生成する。"""
     datetime_values: dict[str, str] = _datetime_suggestions_from_first_log(rows, timezone_name)
     if field in datetime_values:
         return (datetime_values[field],)
@@ -148,8 +161,9 @@ def _datetime_suggestions_from_first_log(
     rows: Sequence[Mapping[str, Any]],
     timezone_name: str,
 ) -> dict[str, str]:
+    """ログの最初の行から日時フィールドの候補を生成する。"""
     for row in rows:
-        raw_time: object = row.get("time")
+        raw_time: datetime | str | None = row.get("time")
         utc_dt: datetime | None = _to_utc_datetime(raw_time)
         if utc_dt is None:
             continue
@@ -166,19 +180,26 @@ def _datetime_suggestions_from_first_log(
     return {}
 
 
-def _to_utc_datetime(raw_time: object) -> datetime | None:
-    if not isinstance(raw_time, str):
-        return None
+def _to_utc_datetime(raw_time: str | datetime | None) -> datetime | None:
+    """日時フィールドの値からUTC日時の候補を生成する。"""
+    if isinstance(raw_time, datetime):
+        if raw_time.tzinfo is None:
+            return raw_time.replace(tzinfo=timezone.utc)
+        return raw_time.astimezone(timezone.utc).replace(microsecond=0)
+
     try:
+        if not isinstance(raw_time, str):
+            return None
         dt: datetime = datetime.fromisoformat(raw_time)
     except ValueError:
         return None
+    
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).replace(microsecond=0)
 
 
-def _to_local_datetime(raw_time: object, timezone_name: str) -> datetime | None:
+def _to_local_datetime(raw_time: datetime | str | None, timezone_name: str) -> datetime | None:
     utc_dt: datetime | None = _to_utc_datetime(raw_time)
     if utc_dt is None:
         return None

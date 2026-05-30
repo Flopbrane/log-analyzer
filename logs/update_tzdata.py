@@ -4,7 +4,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox
 
-from logs.time_utils import update_tzdata_if_needed
+from logs.time_utils import TzdataUpdateResult, update_tzdata_if_needed
 
 
 def main() -> None:
@@ -23,7 +23,7 @@ def main() -> None:
     dialog.update()
 
     try:
-        result = update_tzdata_if_needed()
+        result: TzdataUpdateResult = update_tzdata_if_needed()
     finally:
         dialog.destroy()
 

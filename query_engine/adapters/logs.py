@@ -32,7 +32,7 @@ def log_to_document(log: Mapping[str, Any]) -> Document:
 
 def _first_text(data: Mapping[str, Any], *keys: str) -> str:
     for key in keys:
-        value = data.get(key)
+        value: Any | None = data.get(key)
         if value is not None:
             return str(value)
     return ""

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""LogViewer language selection helpers."""
+"""LogViewerの言語選択ヘルパー。"""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -35,15 +35,15 @@ TIMEZONE_COUNTRIES: dict[LanguageCode, dict[str, str]] = {
 }
 
 def normalize_language(language: str) -> LanguageCode:
-    """Normalize a user-facing language value to a supported language code."""
-    normalized = language.strip().lower()
+    """ユーザー向け言語値を、サポートされている言語コードに正規化します。"""
+    normalized: str = language.strip().lower()
     if normalized in {"en", "english"}:
         return "en"
     return "ja"
 
 
 def translate(key: str, language: str = DEFAULT_LANGUAGE) -> str:
-    """Return a translated UI string, falling back to Japanese and then key."""
+    """UI文字列を翻訳して返す。日本語、次にキーの順でフォールバックする。"""
     language_code: LanguageCode = normalize_language(language)
     return TRANSLATIONS.get(language_code, {}).get(
         key,
@@ -52,7 +52,7 @@ def translate(key: str, language: str = DEFAULT_LANGUAGE) -> str:
 
 
 def translate_timezone_area(area: str, language: str = DEFAULT_LANGUAGE) -> str:
-    """Return the display name for a timezone area."""
+    """タイムゾーンのエリア名を翻訳して返す。"""
     language_code: LanguageCode = normalize_language(language)
     return TIMEZONE_AREAS.get(language_code, {}).get(
         area,
@@ -61,21 +61,23 @@ def translate_timezone_area(area: str, language: str = DEFAULT_LANGUAGE) -> str:
 
 
 def translate_timezone_city(city: str, language: str = DEFAULT_LANGUAGE) -> str:
-    """Return the display name for a timezone city/path."""
+    """タイムゾーンの都市名を翻訳して返す。"""
     language_code: LanguageCode = normalize_language(language)
     readable_city: str = city.replace("_", " ").replace("/", " / ")
     return TIMEZONE_CITIES.get(language_code, {}).get(city, readable_city)
 
 
 def translate_timezone_country(city: str, language: str = DEFAULT_LANGUAGE) -> str:
-    """Return the display name for a timezone's country, based on its city/path."""
+    """タイムゾーンの国名を翻訳して返す。"""
     language_code: LanguageCode = normalize_language(language)
     readable_city: str = city.replace("_", " ").replace("/", " / ")
     return TIMEZONE_COUNTRIES.get(language_code, {}).get(city, readable_city)
 
 
 def format_utc_offset(zone: str) -> str:
-    """Return the current UTC offset text for an IANA timezone."""
+    """IANAタイムゾーンの現在のUTCオフセットを返す。"""
+    hours: int
+    minutes: int
     try:
         local_now: datetime = datetime.now(ZoneInfo(zone))
     except ZoneInfoNotFoundError:
@@ -85,9 +87,9 @@ def format_utc_offset(zone: str) -> str:
     if offset is None:
         return "UTC?"
 
-    total_minutes = int(offset.total_seconds() // 60)
+    total_minutes: int = int(offset.total_seconds() // 60)
     sign: Literal['+'] | Literal['-'] = "+" if total_minutes >= 0 else "-"
-    total_minutes: int = abs(total_minutes)
+    total_minutes = abs(total_minutes)
     hours, minutes = divmod(total_minutes, 60)
     return f"UTC{sign}{hours:02d}:{minutes:02d}"
 
@@ -96,7 +98,7 @@ def build_timezone_display(
     utc_offset: str,
     language: str = DEFAULT_LANGUAGE,
 ) -> str:
-    """Build a localized timezone display label."""
+    """ローカライズされたタイムゾーン表示ラベルを作成する。"""
     city_text: str = translate_timezone_city(city, language)
     country_text: str = translate_timezone_country(
         city,
@@ -109,7 +111,7 @@ def build_timezone_label(
     zone: str,
     language: str = DEFAULT_LANGUAGE,
 ) -> str:
-    """Build a localized label from an IANA timezone name."""
+    """IANAタイムゾーン名からローカライズされたラベルを作成する。"""
 
     _: str
     city: str

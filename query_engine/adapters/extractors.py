@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import IO, TYPE_CHECKING, Protocol
 
 from query_engine.adapters.documents import TextDocument, from_text, normalize_text
 
@@ -12,8 +12,76 @@ HTML_EXTENSIONS: frozenset[str] = frozenset({".html", ".htm", ".xhtml"})
 PDF_EXTENSIONS: frozenset[str] = frozenset({".pdf"})
 DOCX_EXTENSIONS: frozenset[str] = frozenset({".docx"})
 
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+    from charset_normalizer.models import CharsetMatch, CharsetMatches
+    from docx.document import Document as DocxDocument
+    from pypdf import PdfReader
 
-def extract_text_file(path: str | Path, **metadata: Any) -> TextDocument:
+
+class CharsetNormalizerModule(Protocol):
+    def from_bytes(self, sequences: bytes | bytearray) -> CharsetMatches: ...
+
+
+class Bs4Module(Protocol):
+    BeautifulSoup: type[BeautifulSoup]
+
+
+class PdfModule(Protocol):
+    PdfReader: type[PdfReader]
+
+
+class DocxModule(Protocol):
+    def Document(self, docx: str | IO[bytes] | None = None) -> DocxDocument: ...
+
+
+def _import_charset_normalizer() -> CharsetNormalizerModule:
+    try:
+        import charset_normalizer
+    except ImportError as exc:
+        raise RuntimeError("charset-normalizer が必要です。pip install charset-normalizer を実行してください。") from exc
+    return charset_normalizer
+
+
+def _import_bs4() -> Bs4Module:
+    try:
+        import bs4
+    except ImportError as exc:
+        raise RuntimeError("beautifulsoup4 が必要です。pip install beautifulsoup4 を実行してください。") from exc
+    return bs4
+
+
+def _import_pypdf() -> PdfModule:
+    try:
+        import pypdf
+    except ImportError as exc:
+        raise RuntimeError("pypdf が必要です。pip install pypdf を実行してください。") from exc
+    return pypdf
+
+
+def _import_docx() -> DocxModule:
+    try:
+        import docx
+    except ImportError as exc:
+        raise RuntimeError("python-docx が必要です。pip install python-docx を実行してください。") from exc
+    return docx
+
+
+def _extract_pdf(path: Path, **metadata: object) -> TextDocument:
+    pypdf_module: PdfModule = _import_pypdf()
+    reader: PdfReader = pypdf_module.PdfReader(str(path))
+    parts: list[str] = [page.extract_text() or "" for page in reader.pages]
+    return from_text("\n".join(parts), title=path.stem, source=str(path), **metadata)
+
+
+def _extract_docx(path: Path, **metadata: object) -> TextDocument:
+    docx_module: DocxModule = _import_docx()
+    document: DocxDocument = docx_module.Document(str(path))
+    parts: list[str] = [paragraph.text for paragraph in document.paragraphs]
+    return from_text("\n".join(parts), title=path.stem, source=str(path), **metadata)
+
+
+def extract_text_file(path: str | Path, **metadata: object) -> TextDocument:
     """拡張子に応じて文書を読み込み、TextDocumentへ変換する。"""
     file_path: Path = Path(path)
     suffix: str = file_path.suffix.casefold()
@@ -28,27 +96,27 @@ def extract_text_file(path: str | Path, **metadata: Any) -> TextDocument:
     raise ValueError(f"未対応のファイル形式です: {suffix or file_path.name}")
 
 
-def _extract_plain_text(path: Path, **metadata: Any) -> TextDocument:
-    charset_normalizer: Any = _import_charset_normalizer()
+def _extract_plain_text(path: Path, **metadata: object) -> TextDocument:
+    charset_normalizer: CharsetNormalizerModule = _import_charset_normalizer()
     raw: bytes = path.read_bytes()
-    detected: Any = charset_normalizer.from_bytes(raw).best()
+    detected: CharsetMatch | None = charset_normalizer.from_bytes(raw).best()
     text: str = "" if detected is None else str(detected)
     return from_text(text, title=path.stem, source=str(path), **metadata)
 
 
-def _extract_html(path: Path, **metadata: Any) -> TextDocument:
-    charset_normalizer: Any = _import_charset_normalizer()
+def _extract_html(path: Path, **metadata: object) -> TextDocument:
+    charset_normalizer: CharsetNormalizerModule = _import_charset_normalizer()
     raw: bytes = path.read_bytes()
-    detected: Any = charset_normalizer.from_bytes(raw).best()
+    detected: CharsetMatch | None = charset_normalizer.from_bytes(raw).best()
     html: str = "" if detected is None else str(detected)
     try:
-        bs4: Any = _import_bs4()
+        bs4_module: Bs4Module = _import_bs4()
     except RuntimeError:
         title: str
         text: str
         title, text = _extract_html_with_stdlib(html, default_title=path.stem)
         return from_text(text, title=title, source=str(path), **metadata)
-    soup: Any = bs4.BeautifulSoup(html, "html.parser")
+    soup: BeautifulSoup = bs4_module.BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
     title = normalize_text(soup.title.get_text(" ")) if soup.title else path.stem
@@ -66,7 +134,7 @@ class _PlainTextHTMLParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.parts: list[str] = []
-        self.title = ""
+        self.title: str = ""
         self._in_title = False
         self._skip_depth = 0
 
@@ -91,49 +159,3 @@ class _PlainTextHTMLParser(HTMLParser):
         if self._in_title:
             self.title: str = text
         self.parts.append(text)
-
-
-def _extract_pdf(path: Path, **metadata: Any) -> TextDocument:
-    pypdf: Any = _import_pypdf()
-    reader: Any = pypdf.PdfReader(str(path))
-    parts: list[str] = [page.extract_text() or "" for page in reader.pages]
-    return from_text("\n".join(parts), title=path.stem, source=str(path), **metadata)
-
-
-def _extract_docx(path: Path, **metadata: Any) -> TextDocument:
-    docx: Any = _import_docx()
-    document: Any = docx.Document(str(path))
-    parts: list[str] = [paragraph.text for paragraph in document.paragraphs]
-    return from_text("\n".join(parts), title=path.stem, source=str(path), **metadata)
-
-
-def _import_charset_normalizer() -> Any:
-    try:
-        import charset_normalizer
-    except ImportError as exc:
-        raise RuntimeError("charset-normalizer が必要です。pip install charset-normalizer を実行してください。") from exc
-    return charset_normalizer
-
-
-def _import_bs4() -> Any:
-    try:
-        import bs4
-    except ImportError as exc:
-        raise RuntimeError("beautifulsoup4 が必要です。pip install beautifulsoup4 を実行してください。") from exc
-    return bs4
-
-
-def _import_pypdf() -> Any:
-    try:
-        import pypdf
-    except ImportError as exc:
-        raise RuntimeError("pypdf が必要です。pip install pypdf を実行してください。") from exc
-    return pypdf
-
-
-def _import_docx() -> Any:
-    try:
-        import docx
-    except ImportError as exc:
-        raise RuntimeError("python-docx が必要です。pip install python-docx を実行してください。") from exc
-    return docx

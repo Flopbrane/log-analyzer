@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
 from __future__ import annotations
 
 import ast
@@ -6,19 +12,19 @@ from pathlib import Path
 from typing import Any, cast
 
 from logs.log_types import LogDict
-from logs.traceql_bridge import analyze_logs_for_viewer, filter_logs_for_viewer
+from logs.traceql_bridge import TraceQLLogResult, analyze_logs_for_viewer, filter_logs_for_viewer
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 
 
 class TraceQLBridgeBoundaryTests(unittest.TestCase):
     def test_logs_import_query_engine_only_from_bridge(self) -> None:
         offenders: list[str] = []
-        logs_dir = PROJECT_ROOT / "logs"
+        logs_dir: Path = PROJECT_ROOT / "logs"
         for path in logs_dir.rglob("*.py"):
             if path.name == "traceql_bridge.py":
                 continue
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            tree: ast.Module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
@@ -58,12 +64,12 @@ class TraceQLBridgeBoundaryTests(unittest.TestCase):
             ),
         ]
 
-        results = analyze_logs_for_viewer(logs, "level:ERROR", "Asia/Tokyo")
+        results: list[TraceQLLogResult] = analyze_logs_for_viewer(logs, "level:ERROR", "Asia/Tokyo")
         self.assertEqual([True, False], [result.matched for result in results])
         self.assertEqual("disk failure", results[0].document["message"])
         self.assertEqual(3, cast(dict[str, Any], results[0].document["context"])["retry"])
 
-        filtered = filter_logs_for_viewer(logs, "level:ERROR", "Asia/Tokyo")
+        filtered: list[LogDict] = filter_logs_for_viewer(logs, "level:ERROR", "Asia/Tokyo")
         self.assertEqual([logs[0]], filtered)
 
 

@@ -118,14 +118,17 @@ def parse_date_or_datetime(text: str, *, is_end: bool, tz: str | tzinfo) -> date
 
 
 def is_date_query(query: str) -> bool:
+    """クエリが日付検索の形式かを判定する。"""
     return re.fullmatch(r"\d{4}-\d{2}-\d{2}", query) is not None
 
 
 def is_time_query(query: str) -> bool:
+    """クエリが時刻検索の形式かを判定する。"""
     return re.fullmatch(r"\d{2}:\d{2}(:\d{2})?", query) is not None
 
 
 def is_datetime_prefix_query(query: str) -> bool:
+    """クエリが日付時刻検索の形式かを判定する。"""
     return re.fullmatch(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?", query) is not None
 
 
@@ -182,6 +185,7 @@ class SearchQueryParser:
         self.index = 0
 
     def parse(self) -> QueryNode | None:
+        """トークン列をQueryNode ASTへ変換する。"""
         if not self.tokens:
             return None
         node: QueryNode | None = self._parse_or()
@@ -190,17 +194,20 @@ class SearchQueryParser:
         return node
 
     def _current(self) -> str | None:
+        """現在のトークンを返す。なければNone。"""
         if self.index >= len(self.tokens):
             return None
         return self.tokens[self.index]
 
     def _advance(self) -> str | None:
+        """現在のトークンを返し、インデックスを進める。なければNone。"""
         token: str | None = self._current()
         if token is not None:
             self.index += 1
         return token
 
     def _parse_or(self) -> QueryNode | None:
+        """ORを優先的に処理する。"""
         left: QueryNode | None = self._parse_and()
         if left is None:
             return None
@@ -215,6 +222,7 @@ class SearchQueryParser:
         return left
 
     def _parse_and(self) -> QueryNode | None:
+        """ANDを優先的に処理する。"""
         nodes: list[QueryNode] = []
 
         while self._current() is not None:
@@ -238,6 +246,7 @@ class SearchQueryParser:
         return result
 
     def _parse_factor(self) -> QueryNode | None:
+        """因子を処理する。"""
         token: str | None = self._current()
         if token is None:
             return None
@@ -261,6 +270,7 @@ class SearchQueryParser:
         return self._parse_atom()
 
     def _parse_atom(self) -> QueryNode | None:
+        """原子ノードを処理する。"""
         token: str | None = self._advance()
         if token is None:
             return None
@@ -287,6 +297,7 @@ class SearchQueryParser:
         return self._atom_from_token(token)
 
     def _parse_regex_node(self) -> QueryNode:
+        """正規表現ノードを処理する。"""
         first: str | None = self._advance()
         if first is None:
             return TermNode(term="regex")
@@ -299,6 +310,7 @@ class SearchQueryParser:
         return RegexNode(field=None, pattern=first)
 
     def _parse_similar_node(self) -> QueryNode:
+        """類似度ノードを処理する。"""
         text: str | None = self._advance()
         if text is None:
             return TermNode(term="similar")
@@ -312,6 +324,7 @@ class SearchQueryParser:
         return SimilarNode(text=text, threshold=threshold)
 
     def _consume_compare_after_field(self, field: str) -> CompareNode | None:
+        """フィールド名の後に続く比較演算子と数値を処理する。"""
         next_token: str | None = self._current()
         if next_token is None:
             return None
@@ -339,6 +352,7 @@ class SearchQueryParser:
         return None
 
     def _atom_from_token(self, token: str) -> QueryNode:
+        """トークンから原子ノードを作成する。"""
         field: str | None = None
         value: str | None = None
         if ":" in token:
@@ -354,11 +368,14 @@ class SearchQueryParser:
         return TermNode(term=token.lower())
 
     def _looks_like_field_name(self, token: str) -> bool:
+        """トークンがフィールド名のように見えるかを判定する。"""
         return re.fullmatch(r"[A-Za-z_][\w.]*", token) is not None
 
     def _current_upper(self) -> str | None:
+        """現在のトークンを大文字で返す。なければNone。"""
         token: str | None = self._current()
         return token.upper() if token is not None else None
+
 
 # ==========================
 # タイムゾーン関連のユーティリティ
@@ -390,6 +407,7 @@ def _collect_legacy_fields(node: QueryNode, query: SearchQuery) -> None:
 
 
 def _extract_ignore_rules(raw_text: str) -> tuple[str, list[IgnoreRule]]:
+    """検索テキストからignoreルールを抽出する。"""
     ignore_rules: list[IgnoreRule] = []
 
     def collect_ignore(match: re.Match[str]) -> str:
@@ -406,7 +424,11 @@ def _extract_ignore_rules(raw_text: str) -> tuple[str, list[IgnoreRule]]:
 
 
 def _parse_datetime_bounds(raw_text: str, tz: str | tzinfo) -> tuple[datetime | None, datetime | None]:
+    """検索テキストから日付/日時の範囲を解析する。"""
     range_parts: tuple[str, str] | None = split_range_query(raw_text)
+
+    start_text: str
+    end_text: str
 
     if range_parts is not None:
         start_text, end_text = range_parts
@@ -545,6 +567,10 @@ def parse_query(
     if not raw_text:
         return query
 
+    query_text_for_parse:str
+    sort_spec: SortSpec | None
+    top_limit: int | None
+
     query_text_for_parse, sort_spec, top_limit = _extract_result_modifiers(raw_text)
     query.sort = sort_spec
     query.top = top_limit
@@ -557,6 +583,8 @@ def parse_query(
     query.start, query.end = _parse_datetime_bounds(query_text_for_parse, tz)
     if query.start is not None or query.end is not None:
         return query
+
+    query_text: str
 
     query_text, query.ignore_rules = _extract_ignore_rules(query_text_for_parse)
     tokens: list[str] = tokenize_query(query_text)

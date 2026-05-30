@@ -20,13 +20,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, TypeGuard, cast
 
 from logs.display_formatter import LogRenderer
-from logs.language_selector import (
-    LanguageCode,
-    build_timezone_label,
-    normalize_language,
-    translate,
-    translate_timezone_area,
-)
+from logs.language_selector import LanguageCode, build_timezone_label, normalize_language, translate, translate_timezone_area
 from logs.log_app import get_logger
 from logs.log_config import load_viewer_config, save_viewer_config
 from logs.log_multi_select import LogFileSelector
@@ -36,29 +30,14 @@ from logs.log_storage import load_log
 from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.multi_info_logger import AppLogger
-from logs.openai_key_store import (
-    delete_openai_api_key,
-    has_openai_api_key,
-    is_keyring_available,
-    save_openai_api_key,
-)
+from logs.openai_key_store import delete_openai_api_key, has_openai_api_key, is_keyring_available, save_openai_api_key
 from logs.query_error_bridge import build_query_error_text
-from logs.search_matcher import (
-    apply_result_modifiers,
-    match_search_query,
-    run_aggregate_query,
-)
+from logs.search_matcher import apply_result_modifiers, match_search_query, run_aggregate_query
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
-from logs.time_utils import (
-    to_world_local_datetime,
-)
-from logs.tzinfo_formatter import (
-    TimeZoneData,
-    TimeZoneItem,
-    build_timezone_data,
-)
+from logs.time_utils import to_world_local_datetime
+from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
 
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
@@ -69,7 +48,7 @@ def _is_typed_context_value(value: object) -> TypeGuard[TypedContextValue]:
     """Loggerの {"type": ..., "value": ...} context値か判定する。"""
     if not isinstance(value, Mapping):
         return False
-    mapping = cast(Mapping[object, object], value)
+    mapping: Mapping[object, object] = cast(Mapping[object, object], value)
     return "type" in mapping and "value" in mapping
 
 
@@ -693,6 +672,7 @@ class LogViewer:
         button_frame.pack(fill=tk.X, padx=16, pady=18)
 
         def on_save() -> None:
+            """API Key保存処理"""
             api_key: str = key_var.get().strip()
             if not api_key:
                 messagebox.showwarning(self._t("dialog_input_check"), self._t("dialog_api_key_required"), parent=window)
@@ -709,6 +689,7 @@ class LogViewer:
             window.destroy()
 
         def on_delete() -> None:
+            """API Key削除処理"""
             if not is_keyring_available():
                 messagebox.showerror(
                     self._t("dialog_keyring_required_title"),
@@ -1107,13 +1088,10 @@ class LogViewer:
             return None, 1
         row_dict: dict[str, Any] = cast(dict[str, Any], row)
 
-        where = row_dict.get("where", {})
-        if not isinstance(where, dict):
-            return None, 1
-        where_dict: dict[str, Any] = cast(dict[str, Any], where)
+        where_dict: dict[str, Any] = cast(dict[str, Any], row_dict.get("where", {}))
 
         file_path: Any | None = where_dict.get("file")
-        line_no = where_dict.get("line", 1)
+        line_no: int | None = where_dict.get("line", 1)
         if not file_path:
             return None, 1
 
@@ -1126,8 +1104,8 @@ class LogViewer:
         """TraceQL/parser系エラーを人間向けに見やすく整形する。"""
         context: dict[str, Any] = raw.get("context", {})
 
-        query = self._unwrap_context_value(context.get("search_text"))
-        error = self._unwrap_context_value(context.get("error"))
+        query: object = self._unwrap_context_value(context.get("search_text"))
+        error: object = self._unwrap_context_value(context.get("error"))
         if not isinstance(query, str) or not query:
             return ""
         if not isinstance(error, str) or not error:

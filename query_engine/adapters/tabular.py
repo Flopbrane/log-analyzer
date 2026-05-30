@@ -57,5 +57,5 @@ def _make_title(row: Mapping[str, Any], *, row_number: int | None) -> str:
 
 
 def _make_id(*, source: str, table: str, row_number: int | None) -> str:
-    parts = [part for part in (source, table, str(row_number) if row_number is not None else "") if part]
+    parts: list[str] = [part for part in (source, table, str(row_number) if row_number is not None else "") if part]
     return ":".join(parts)

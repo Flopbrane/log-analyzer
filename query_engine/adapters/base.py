@@ -1,4 +1,4 @@
-"""Shared adapter protocol and document normalization helpers."""
+"""アダプタプロトコルおよびドキュメント正規化ヘルパーを共有する。"""
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
@@ -10,10 +10,10 @@ from query_engine.utils import flatten_text
 
 @runtime_checkable
 class DocumentAdapter(Protocol):
-    """Common API for adapters that expose Query Engine documents."""
+    """Query Engineのドキュメントを公開するアダプタの共通API。"""
 
     def documents(self) -> Iterable[Document]:
-        """Return or stream documents."""
+        """ドキュメントを返すまたはストリームする。"""
         ...
 
 
@@ -26,7 +26,7 @@ def normalize_document(
     source: str = "",
     metadata: Mapping[str, Any] | None = None,
 ) -> QueryDocument:
-    """Convert arbitrary mappings into the stable QueryDocument schema."""
+    """任意のマッピングを安定したQueryDocumentスキーマに変換する。"""
     if isinstance(value, QueryDocument):
         return value
 
@@ -63,12 +63,13 @@ def normalize_document(
 def iter_document_mappings(
     documents: Iterable[Mapping[str, Any] | QueryDocument],
 ) -> Iterator[Document]:
-    """Yield backward-compatible mappings from normalized documents."""
+    """正規化されたドキュメントから後方互換のマッピングを生成する。"""
     for document in documents:
         yield normalize_document(document).to_mapping()
 
 
 def _first_non_empty_text(fields: Mapping[str, Any]) -> str:
+    """フィールドの中から最初の非空テキストを返す。"""
     for value in fields.values():
         if value not in (None, ""):
             return str(value)

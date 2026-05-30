@@ -1,10 +1,6 @@
-"""SQLite-backed document adapter for large local datasets.
-
-The adapter keeps query_engine independent from Logger/UI code. Callers pass
-generic Document mappings, and SQLite stores each document as JSON plus a
-flattened text column for full-text-ish LIKE searches.
-"""
+# -*- coding: utf-8 -*-
 # cspell:ignore executemany
+"""大規模ローカルデータセット向けのSQLiteベースのドキュメントアダプタ。"""
 from __future__ import annotations
 
 import json
@@ -13,10 +9,23 @@ import sqlite3
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from query_engine.evaluators.sql import SqlCompileResult, compile_sql_where
 from query_engine.models import Document, SearchResult
 from query_engine.utils import flatten_text
+
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
+
+"""大規模ローカルデータセット向けのSQLiteベースのドキュメントアダプタ。
+このアダプタは、クエリエンジンをロガー/UIコードから独立させます。
+呼び出し元は汎用的なドキュメントマッピングを渡し、SQLiteは各ドキュメントをJSON形式で保存するとともに、
+検索時に使用される全文検索（LIKE句のような検索）のためにフラット化されたテキスト列も格納します。
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +37,7 @@ class SQLiteSearchBatch:
 
 
 class SQLiteDocumentStore:
-    """Persist and search generic Query Engine Documents with SQLite."""
+    """大規模ローカルデータセット向けのSQLiteベースのドキュメントストア。"""
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -79,8 +88,10 @@ class SQLiteDocumentStore:
         return count
 
     def search(self, query: str, *, limit: int | None = None) -> list[SearchResult]:
+        sql: str
+        params: tuple[object, ...]
         sql, params = self._search_sql(query, limit=limit, offset=None)
-        rows = self.connection.execute(sql, params).fetchall()
+        rows: list[Any] = self.connection.execute(sql, params).fetchall()
         return [_row_to_search_result(row) for row in rows]
 
     def iter_search(
@@ -90,12 +101,15 @@ class SQLiteDocumentStore:
         batch_size: int = 1000,
     ) -> Iterator[SQLiteSearchBatch]:
         offset = 0
+        sql: str
+        params: tuple[object, ...]
+        
         while True:
             sql, params = self._search_sql(query, limit=batch_size, offset=offset)
-            rows = self.connection.execute(sql, params).fetchall()
+            rows: list[Any] = self.connection.execute(sql, params).fetchall()
             if not rows:
                 break
-            results = tuple(_row_to_search_result(row) for row in rows)
+            results: tuple[SearchResult, ...] = tuple(_row_to_search_result(row) for row in rows)
             yield SQLiteSearchBatch(offset=offset, results=results)
             offset += len(rows)
 
@@ -144,7 +158,7 @@ def documents_to_sqlite(
 
 
 def _document_text(document: Document) -> str:
-    value = document.get("text")
+    value: Any | None = document.get("text")
     if isinstance(value, str) and value:
         return value
     return flatten_text(document)
@@ -155,12 +169,12 @@ def _document_json(document: Document) -> str:
 
 
 def _row_to_search_result(row: sqlite3.Row) -> SearchResult:
-    document = json.loads(str(row["data"]))
+    document: dict[str, Any] = json.loads(str(row["data"]))
     return SearchResult(document=document)
 
 
 def _json_field_mapper(field: str) -> str:
-    path = "$." + ".".join(_json_path_part(part) for part in field.split("."))
+    path: str = "$." + ".".join(_json_path_part(part) for part in field.split("."))
     return f"json_extract(data, '{path}')"
 
 

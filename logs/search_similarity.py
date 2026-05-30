@@ -10,6 +10,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, cast
 
+from openai import OpenAI
+from openai.types.create_embedding_response import CreateEmbeddingResponse
+
 DEFAULT_SIMILARITY_THRESHOLD = 0.08
 SIMILARITY_CACHE_KIND = "tfidf_char_ngram_v1"
 CACHE_PATH: Path = Path(__file__).with_name("_cash.jsonl")
@@ -151,12 +154,11 @@ def similarity_score(query_text: str, document_text: str) -> float:
 
 
 # Future OpenAI embeddings hook (requires OPENAI_API_KEY and paid API access):
-# from openai import OpenAI
-#
-# def embedding_vector(text: str) -> list[float]:
-#     client = OpenAI()
-#     response = client.embeddings.create(
-#         model="text-embedding-3-small",
-#         input=text,
-#     )
-#     return response.data[0].embedding
+
+def embedding_vector(text: str) -> list[float]:
+    client = OpenAI()
+    response: CreateEmbeddingResponse = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text,
+    )
+    return response.data[0].embedding

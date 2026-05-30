@@ -1,4 +1,11 @@
+# -*- coding: utf-8 -*-
 """Loggerの検索窓からTraceQL検索コアを使うための橋渡し。"""
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
+
 from __future__ import annotations
 
 import re
@@ -77,7 +84,7 @@ def analyze_logs_for_viewer(
     for index, log in enumerate(logs):
         document: Document = log_to_traceql_document(log, tz)
         try:
-            matched = match_query(query, document)
+            matched: bool = match_query(query, document)
         except QuerySyntaxError:
             matched = False
         results.append(

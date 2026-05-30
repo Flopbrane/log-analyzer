@@ -10,16 +10,10 @@ from datetime import datetime, timezone, tzinfo
 from typing import Any, Callable, cast
 
 from logs.log_types import LogDict
-from logs.search_ast import (AndNode, CompareNode, EmptyNode, FieldNode,
-                             NotNode, OrNode, QueryNode, RegexNode,
-                             SimilarNode, TermNode)
-from logs.search_models import (AggregateQuery, AggregateResult,
-                                CompareOperator, IgnoreRule, SearchQuery,
-                                SortSpec)
-from logs.search_similarity import (DEFAULT_SIMILARITY_THRESHOLD,
-                                    similarity_score)
-from logs.search_text_analysis import (is_time_query, parse_query,
-                                       resolve_timezone)
+from logs.search_ast import AndNode, CompareNode, EmptyNode, FieldNode, NotNode, OrNode, QueryNode, RegexNode, SimilarNode, TermNode
+from logs.search_models import AggregateQuery, AggregateResult, CompareOperator, IgnoreRule, SearchQuery, SortSpec
+from logs.search_similarity import DEFAULT_SIMILARITY_THRESHOLD, similarity_score
+from logs.search_text_analysis import is_time_query, parse_query, resolve_timezone
 from logs.traceql_bridge import match_traceql_search, should_use_legacy_search
 
 FIELD_MAP: dict[str, str] = {
@@ -167,6 +161,7 @@ def get_numeric_aggregate_values(log: LogDict, aggregate: AggregateQuery) -> lis
 
 
 def _match_field_node(log: LogDict, node: FieldNode) -> bool:
+    """FieldNodeを判定する。"""
     if not node.field or not node.value:
         return False
 
@@ -183,6 +178,7 @@ def _match_field_node(log: LogDict, node: FieldNode) -> bool:
 
 
 def _match_regex_node(log: LogDict, node: RegexNode, blob: str) -> bool:
+    """RegexNodeを判定する。"""
     try:
         pattern: re.Pattern[str] = re.compile(node.pattern, flags=re.IGNORECASE)
     except re.error:
@@ -197,6 +193,7 @@ def _match_regex_node(log: LogDict, node: RegexNode, blob: str) -> bool:
 
 
 def _match_similar_node(node: SimilarNode, blob: str) -> bool:
+    """SimilarNodeを判定する。"""
     threshold: float = node.threshold or DEFAULT_SIMILARITY_THRESHOLD
     return similarity_score(node.text, blob) >= threshold
 
@@ -238,6 +235,7 @@ def iter_numeric_values(value: object, *, key_filter: str | None = None) -> list
 
 
 def _match_compare_node(log: LogDict, node: CompareNode) -> bool:
+    """CompareNodeを判定する。"""
     dotted_key: str = _resolve_search_field(node.field)
     value: object = _get_nested_value(cast(dict[str, Any], log), dotted_key, default=_MISSING)
     numbers: list[float] = [] if value is _MISSING else iter_numeric_values(value)
@@ -302,6 +300,7 @@ def match_query_node(log: LogDict, node: QueryNode, blob: str) -> bool:
 
 
 def _find_similar_node(node: QueryNode | None) -> SimilarNode | None:
+    """検索ASTからSimilarNodeを探す。"""
     if node is None:
         return None
     if isinstance(node, SimilarNode):
@@ -314,6 +313,7 @@ def _find_similar_node(node: QueryNode | None) -> SimilarNode | None:
 
 
 def _match_query_dataclass(log: LogDict, query: SearchQuery, tz: str | tzinfo) -> bool:
+    """SearchQueryの条件でログを判定する。"""
     local_dt: datetime | None = to_local_datetime(log.get("time"), tz)
 
     if query.start is not None or query.end is not None:
@@ -362,6 +362,7 @@ def filter_aggregate_logs(
 
 
 def _format_aggregate_value(value: object) -> str:
+    """集計値を見やすく整形する。"""
     if isinstance(value, float):
         return f"{value:.6g}"
     return str(value)
@@ -417,6 +418,9 @@ def _run_group_aggregate_query(
 
     parts: list[str] = []
     total_value_count = 0
+    value: object
+    value_count: int
+
     for group_value in sorted(grouped_logs):
         logs_for_group: list[LogDict] = grouped_logs[group_value]
         values: list[object] = []
@@ -429,7 +433,7 @@ def _run_group_aggregate_query(
         total_value_count += value_count
         parts.append(f"{group_value}:{_format_aggregate_value(value)}")
 
-    message = (
+    message: str = (
         f"group by {group_field} {aggregate.function} {aggregate.field} -> "
         f"{'; '.join(parts)} "
         f"(groups={len(grouped_logs)}, logs={len(matched_logs)}, values={total_value_count})"
@@ -559,6 +563,7 @@ def _sort_value(
     sort: SortSpec,
     tz: str | tzinfo,
 ) -> tuple[int, int, float, str]:
+    """ソート用の値を取得する。数値があればそれを、なければテキストを返す。"""
     field: str = sort.field.lower()
     if field == "time":
         local_dt: datetime | None = to_local_datetime(log.get("time"), tz)

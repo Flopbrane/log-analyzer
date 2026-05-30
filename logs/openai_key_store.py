@@ -37,7 +37,7 @@ def create_openai_client() -> OpenAI:
 
 def get_openai_api_key() -> str | None:
     """保存済みAPI Keyを取得する。未登録ならNone。"""
-    keyring = _load_keyring()
+    keyring: None | Any = _load_keyring()
     if keyring is None:
         return None
     key: str | None = keyring.get_password(SERVICE_NAME, ACCOUNT_NAME)
@@ -51,7 +51,7 @@ def has_openai_api_key() -> bool:
 
 def save_openai_api_key(api_key: str) -> None:
     """API KeyをOS資格情報ストアへ保存する。"""
-    keyring = _load_keyring()
+    keyring: None | Any = _load_keyring()
     if keyring is None:
         raise RuntimeError("keyring module is not installed")
     keyring.set_password(SERVICE_NAME, ACCOUNT_NAME, api_key)
@@ -59,7 +59,7 @@ def save_openai_api_key(api_key: str) -> None:
 
 def delete_openai_api_key() -> None:
     """保存済みAPI Keyを削除する。"""
-    keyring = _load_keyring()
+    keyring: None | Any = _load_keyring()
     if keyring is None:
         raise RuntimeError("keyring module is not installed")
     try:

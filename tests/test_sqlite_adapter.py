@@ -1,13 +1,17 @@
+# -*- coding: utf-8 -*-
+"""SQLiteをドキュメントストアとして扱うアダプターのテスト。"""
 from __future__ import annotations
 
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
 import tempfile
 import unittest
 from pathlib import Path
 
-from query_engine.adapters.sqlite_adapter import (
-    SQLiteDocumentStore,
-    SQLiteSearchBatch,
-)
+from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore, SQLiteSearchBatch
 from query_engine.models import Document, SearchResult
 
 

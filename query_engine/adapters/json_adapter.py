@@ -53,7 +53,7 @@ class JsonAdapter:
             return [_coerce_record(item) for item in items]
 
         if isinstance(data, dict):
-            record= cast(Record, data)
+            record: Record = cast(Record, data)
             rows: list[dict[str, Any]] | None = _find_embedded_rows(record)
             if rows is not None:
                 return rows
@@ -146,8 +146,8 @@ def _coerce_record(value: object) -> Record:
 
 def _find_embedded_rows(record: Record) -> list[Record] | None:
     for key in ("records", "rows", "items", "data"):
-        value = record.get(key)
+        value: Any | None = record.get(key)
         if isinstance(value, list):
-            items = cast("list[object]", value)
+            items: list[object] = cast("list[object]", value)
             return [_coerce_record(item) for item in items]
     return None

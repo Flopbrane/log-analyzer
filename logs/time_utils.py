@@ -358,11 +358,11 @@ def get_latest_tzdata_version(timeout: float = 10.0) -> str | None:
     """PyPIから公開済みの最新tzdataバージョンを取得する。"""
     try:
         with urllib.request.urlopen(TZDATA_PYPI_URL, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+            payload: dict[str, Any] = json.loads(response.read().decode("utf-8"))
     except (OSError, urllib.error.URLError, json.JSONDecodeError):
         return None
 
-    version = payload.get("info", {}).get("version")
+    version: str | None = payload.get("info", {}).get("version")
     return version if isinstance(version, str) and version else None
 
 
@@ -380,7 +380,7 @@ def update_tzdata_if_needed(
     current_year = str(date.today().year)
 
     try:
-        reference_version = update_state_file.read_text(encoding="utf-8").strip()
+        reference_version: str = update_state_file.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         reference_version = ""
     except Exception as e:
@@ -391,8 +391,8 @@ def update_tzdata_if_needed(
             )
         reference_version = ""
 
-    installed_version = get_installed_tzdata_version()
-    latest_version = get_latest_tzdata_version()
+    installed_version: str = get_installed_tzdata_version()
+    latest_version: str | None = get_latest_tzdata_version()
     if latest_version is None:
         if not reference_version:
             update_state_file.write_text(f"{current_year}:unknown", encoding="utf-8")
@@ -405,7 +405,7 @@ def update_tzdata_if_needed(
             message="tzdata latest version check skipped or failed",
         )
 
-    expected_reference = f"{current_year}:{latest_version}"
+    expected_reference: str = f"{current_year}:{latest_version}"
     if reference_version == expected_reference and installed_version == latest_version:
         return TzdataUpdateResult(
             checked=True,
@@ -460,7 +460,7 @@ def update_tzdata_if_needed(
             message=result.stderr.strip() or "tzdata update failed",
         )
 
-    updated_version = get_installed_tzdata_version()
+    updated_version: str = get_installed_tzdata_version()
 
     try:
         update_state_file.write_text(f"{current_year}:{updated_version}", encoding="utf-8")
