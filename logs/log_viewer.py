@@ -36,6 +36,7 @@ from logs.search_matcher import apply_result_modifiers, match_search_query, run_
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
+from logs.summary_bridge import summarize_text_for_viewer
 from logs.time_utils import to_world_local_datetime
 from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
 
@@ -953,6 +954,10 @@ class LogViewer:
         if search_query.aggregate is not None:
             result: AggregateResult = run_aggregate_query(self.filtered_rows, search_query.aggregate, tz)
             self.aggregate_result_var.set(result.message)
+        else:
+            self.aggregate_result_var.set(
+                summarize_text_for_viewer(self.filtered_rows, search_text, tz)
+            )
 
 
     def _format_world_local_time(self, value: Any) -> str:

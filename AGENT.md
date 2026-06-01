@@ -39,6 +39,66 @@ logs
 
 ---
 
+## Summary Engine Responsibility
+
+The `summary_engine/` package is responsible for:
+
+* aggregation
+* statistical summaries
+* anomaly summaries
+* module ranking
+* error ranking
+* human-readable summaries
+* future insight generation
+
+Example:
+
+```text
+Query Result
+    ↓
+Summary Engine
+    ↓
+Human Summary
+```
+
+The summary layer must remain independent from GUI code.
+
+Allowed dependency direction:
+
+```text
+logs
+    ↓
+traceql_bridge
+    ↓
+query_engine
+
+logs
+    ↓
+summary_bridge
+    ↓
+summary_engine
+```
+
+Forbidden dependency direction:
+
+```text
+summary_engine
+    ↓
+logs
+```
+
+The summary layer should be reusable for:
+
+* JSON
+* CSV
+* SQLite
+* Log files
+* AST analysis
+* Security logs
+* Future document analysis
+
+---
+
 ## query_engine Responsibility
 
 The `query_engine/` package is responsible for:
@@ -71,11 +131,11 @@ Responsibilities:
 * search UI
 * application integration
 
-This layer may import from `query_engine`.
+This layer should access `query_engine` through `traceql_bridge.py`.
 
 ---
 
-## Bridge Layer
+## TraceQL Bridge Layer
 
 Communication between LoggerViewer and TraceQL Core must go through:
 
@@ -84,6 +144,43 @@ traceql_bridge.py
 ```
 
 Avoid direct imports from UI modules into `query_engine`.
+
+---
+
+## Summary Bridge Layer
+
+Communication between LogViewer and Summary Engine must go through:
+
+```text
+summary_bridge.py
+```
+
+Allowed direction:
+
+```text
+LogViewer
+    ↓
+summary_bridge
+    ↓
+summary_engine
+```
+
+Avoid direct imports from UI modules into summary_engine.
+
+The bridge layer exists to:
+
+* isolate UI from summary internals
+* simplify future refactoring
+* prevent dependency leaks
+* support future engine replacement
+
+Viewer code should not directly access:
+
+* aggregators
+* analyzers
+* summary generators
+
+Use bridge functions instead.
 
 ---
 
@@ -143,5 +240,9 @@ The project is evolving toward:
 * pluggable adapters
 * multi-document analysis engine
 * scalable query/evaluation backends
+* reusable Summary Engine
+* Insight generation layer
+* human-readable event summaries
+* context-driven analytics
 
 Maintain clean dependency direction to support future package separation.
