@@ -12,16 +12,37 @@ import json
 from pathlib import Path
 from typing import Any
 
+from file_adapter.extra_file_storage import load_extra_records
+
 
 def load_log(log_path: Path) -> list[dict[str, Any]]:
     """ログファイルを読み込む"""
+    log_entries: list[dict[str, Any]] | None = _load_json_lines(log_path)
+    if log_entries is not None:
+        return log_entries
+
+    result = load_extra_records(log_path)
+    if result.success:
+        return result.records
+
+    print(f"Failed to load log file {log_path}: {result.error}")
+    return []
+
+
+def _load_json_lines(log_path: Path) -> list[dict[str, Any]] | None:
+    """従来形式のJSONLを読み込む。失敗時はfallbackのためNoneを返す。"""
     log_entries: list[dict[str, Any]] = []
     try:
         with open(log_path, "r", encoding="utf-8") as f:
             for line in f:
-                log_entries.append(json.loads(line))
-    except Exception as e:
-        print(f"Failed to load log file {log_path}: {e}")
+                if not line.strip():
+                    continue
+                value: Any = json.loads(line)
+                if not isinstance(value, dict):
+                    return None
+                log_entries.append(value)
+    except Exception:
+        return None
     return log_entries
 
 
@@ -33,7 +54,7 @@ def load_multi_logs(log_paths: list[Path]) -> list[dict[str, Any]]:
         all_logs.extend(logs)
 
     # 🔥 時系列ソート
-    all_logs.sort(key=lambda x: str(x.get("time", "")))
+    all_logs.sort(key=lambda x: str(x.get("time") or x.get("timestamp") or ""))
     return all_logs
 
 
