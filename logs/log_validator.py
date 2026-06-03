@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from logs.log_app import get_logger
 from logs.log_analysis import LogType, detect_log_type, normalize_external_log
+from logs.log_app import get_logger
 from logs.log_types import LogDict, LogWhat
 
 if TYPE_CHECKING:
