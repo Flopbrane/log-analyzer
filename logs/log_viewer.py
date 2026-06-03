@@ -36,9 +36,10 @@ from logs.search_matcher import apply_result_modifiers, match_search_query, run_
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
-from logs.summary_bridge import summarize_text_for_viewer
+from logs.summary_bridge import summarize_logs_for_viewer, summarize_text_for_viewer
 from logs.time_utils import to_world_local_datetime
 from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
+from summary_engine.summary_types import SummaryResult
 
 WindowWidget = tk.Tk | tk.Toplevel
 ParentWidget = tk.Tk | tk.Toplevel | tk.Frame | ttk.Frame
@@ -455,6 +456,19 @@ class LogViewer:
         # 👉 ここで再描画（重要）
         self.apply_filter()
 
+    def open_summary_window(self) -> None:
+        """要約ウインドウを開く"""
+        if not self.filtered_rows:
+            messagebox.showinfo(self._t("summary_no_logs_title"), self._t("summary_no_logs_message"))
+            return
+
+        result: SummaryResult = summarize_logs_for_viewer(
+            self.filtered_rows,
+            self.search_var.get(),
+            self.current_tz,
+        )
+        SummaryWindow(self.root, result, self.language)
+
     # =======================
     # UI構築(メイン・ウインド)
     # =======================
@@ -520,6 +534,13 @@ class LogViewer:
             anchor="w",
             fg="#005a9e",
         ).pack(side=tk.LEFT, padx=(12, 0), fill=tk.X, expand=True)
+
+        self.summary_button = tk.Button(
+            filter_frame,
+            text=self._t("button_summary"),
+            command=self.open_summary_window,
+        )
+        self.summary_button.pack(side=tk.LEFT, padx=(8, 0))
 
         # =========================
         # 🔥 Tree専用フレーム（重要）
@@ -1320,6 +1341,66 @@ class LogViewer:
         if not file_path:
             return
         subprocess.run(["code", "-g", f"{file_path}:{line_no}"], check=False)
+
+
+class SummaryWindow:
+    """検索結果の要約をコピー可能なTextで表示するウィンドウ。"""
+
+    def __init__(self, parent: WindowWidget, result: SummaryResult, language: LanguageCode) -> None:
+        self.parent = parent
+        self.result = result
+        self.language = language
+        self.window = tk.Toplevel(parent)
+        self.window.title(self._t("dialog_summary_title"))
+        self.window.geometry("820x520")
+        self.window.transient(parent)
+        self._build_ui()
+
+    def _t(self, key: str) -> str:
+        return translate(self.language, key)
+
+    def _build_ui(self) -> None:
+        frame = tk.Frame(self.window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        button_frame = tk.Frame(frame)
+        button_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Button(
+            button_frame,
+            text=self._t("button_close"),
+            command=self.window.destroy,
+        ).pack(side=tk.RIGHT)
+        tk.Button(
+            button_frame,
+            text=self._t("button_copy_summary"),
+            command=self._copy_summary,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
+
+        y_scrollbar = tk.Scrollbar(frame)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar = tk.Scrollbar(frame, orient="horizontal")
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        text_area = tk.Text(
+            frame,
+            wrap="none",
+            font=("Consolas", 11),
+            yscrollcommand=y_scrollbar.set,
+            xscrollcommand=x_scrollbar.set,
+            undo=False,
+        )
+        text_area.pack(fill=tk.BOTH, expand=True)
+        y_scrollbar.config(command=text_area.yview)  # type: ignore[union-attr]
+        x_scrollbar.config(command=text_area.xview)  # type: ignore[union-attr]
+
+        text_area.insert("1.0", self.result.text)
+        text_area.config(state="disabled")
+        text_area.focus_set()
+
+    def _copy_summary(self) -> None:
+        self.window.clipboard_clear()
+        self.window.clipboard_append(self.result.text)
 
 
 if __name__ == "__main__":

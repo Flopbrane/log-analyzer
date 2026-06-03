@@ -22,11 +22,17 @@ from summary_engine.aggregators.message_aggregator import aggregate_messages
 from summary_engine.aggregators.module_aggregator import aggregate_modules
 from summary_engine.analyzers.anomaly_analyzer import detect_level_anomalies
 from summary_engine.summaries.text_summary import build_text_summary
-from summary_engine.summary_types import SummaryRequest, SummaryResult
+from summary_engine.summary_types import (
+    LogSummaryDict,
+    NumericStats,
+    RankingItem,
+    SummaryRequest,
+    SummaryResult,
+)
 
 
 def summarize_logs(
-    logs: Iterable[Mapping[str, Any]],
+    logs: Iterable[LogSummaryDict],
     condition_text: str = "",
     timezone: str = "UTC",
     metadata: Mapping[str, Any] | None = None,
@@ -43,14 +49,14 @@ def summarize_logs(
 
 def summarize_request(request: SummaryRequest) -> SummaryResult:
     """SummaryRequestを処理し、UI非依存のSummaryResultを返す。"""
-    logs = request.logs
+    logs: tuple[LogSummaryDict, ...] = request.logs
     total_count: int = len(logs)
     level_counts: dict[str, int] = aggregate_levels(logs)
-    module_ranking = aggregate_modules(logs)
-    message_ranking = aggregate_messages(logs)
-    context_numeric_stats = aggregate_numeric_context(logs)
-    insights = detect_level_anomalies(level_counts, total_count)
-    text = build_text_summary(
+    module_ranking: tuple[RankingItem, ...] = aggregate_modules(logs)
+    message_ranking: tuple[RankingItem, ...] = aggregate_messages(logs)
+    context_numeric_stats: dict[str, NumericStats] = aggregate_numeric_context(logs)
+    insights: tuple[str, ...] = detect_level_anomalies(level_counts, total_count)
+    text: str = build_text_summary(
         total_count=total_count,
         condition_text=request.condition_text,
         level_counts=level_counts,

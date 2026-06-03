@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import unittest
 
-from logs.query_error_bridge import QueryErrorResponse, build_query_error_response, build_query_error_text
+
+from logs.query_error_bridge import (build_query_error_response,
+                                     build_query_error_text,
+                                     QueryErrorResponse)
+
 
 
 class QueryErrorBridgeTests(unittest.TestCase):

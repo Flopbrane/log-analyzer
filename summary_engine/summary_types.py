@@ -15,11 +15,21 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, TypedDict, cast
 
 
+class LogSummaryDict(TypedDict, total=False):
+    level: str
+    time: str
+    trace_id: str
+    where: Mapping[str, Any]
+    what: Mapping[str, Any]
+    context: Mapping[str, Any]
+    output: str
+
+
 @dataclass(frozen=True, slots=True)
 class SummaryRequest:
     """要約エンジンへ渡す、UI非依存の入力データ。"""
 
-    logs: tuple[Mapping[str, Any], ...]
+    logs: tuple[LogSummaryDict, ...]
     condition_text: str = ""
     timezone: str = "UTC"
     metadata: Mapping[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
@@ -57,9 +67,3 @@ class SummaryResult:
     context_numeric_stats: Mapping[str, NumericStats]
     insights: tuple[str, ...]
     text: str
-
-class LogDict(TypedDict, total=False):
-    level: str
-    message: str
-    context: dict[str, Any]
-    timestamp: str
