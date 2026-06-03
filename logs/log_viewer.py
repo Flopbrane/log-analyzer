@@ -36,7 +36,7 @@ from logs.search_matcher import apply_result_modifiers, match_search_query, run_
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
-from logs.summary_bridge import summarize_logs_for_viewer, summarize_text_for_viewer
+from logs.summary_bridge import summarize_logs_for_viewer
 from logs.time_utils import to_world_local_datetime
 from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
 from summary_engine.summary_types import SummaryResult
@@ -528,12 +528,6 @@ class LogViewer:
 
         self.search_button = tk.Button(filter_frame, text=self._t("button_search"), command=self.apply_filter)
         self.search_button.pack(side=tk.LEFT)
-        tk.Label(
-            filter_frame,
-            textvariable=self.aggregate_result_var,
-            anchor="w",
-            fg="#005a9e",
-        ).pack(side=tk.LEFT, padx=(12, 0), fill=tk.X, expand=True)
 
         self.summary_button = tk.Button(
             filter_frame,
@@ -541,6 +535,12 @@ class LogViewer:
             command=self.open_summary_window,
         )
         self.summary_button.pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(
+            filter_frame,
+            textvariable=self.aggregate_result_var,
+            anchor="w",
+            fg="#005a9e",
+        ).pack(side=tk.LEFT, padx=(12, 0), fill=tk.X, expand=True)
 
         # =========================
         # 🔥 Tree専用フレーム（重要）
@@ -976,9 +976,7 @@ class LogViewer:
             result: AggregateResult = run_aggregate_query(self.filtered_rows, search_query.aggregate, tz)
             self.aggregate_result_var.set(result.message)
         else:
-            self.aggregate_result_var.set(
-                summarize_text_for_viewer(self.filtered_rows, search_text, tz)
-            )
+            self.aggregate_result_var.set("")
 
 
     def _format_world_local_time(self, value: Any) -> str:
@@ -1357,7 +1355,7 @@ class SummaryWindow:
         self._build_ui()
 
     def _t(self, key: str) -> str:
-        return translate(self.language, key)
+        return translate(key, self.language)
 
     def _build_ui(self) -> None:
         frame = tk.Frame(self.window)

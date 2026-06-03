@@ -54,7 +54,13 @@ class SummaryBridgeTests(unittest.TestCase):
         self.assertEqual({"ERROR": 1, "INFO": 1}, dict(result.level_counts))
         self.assertEqual("auth", result.module_ranking[0].key)
         self.assertIn("条件: module:auth", result.text)
-        self.assertIn("context.latency_ms avg=100", result.text)
+        self.assertIn("レベル別件数", result.text)
+        self.assertIn("  - ERROR: 1", result.text)
+        self.assertIn("モジュール上位", result.text)
+        self.assertIn("  - auth: 2", result.text)
+        self.assertIn("  - context.latency_ms", result.text)
+        self.assertIn("      平均: 100", result.text)
+        self.assertNotIn(" / ", result.text)
 
     def test_text_bridge_handles_empty_result(self) -> None:
         text = summarize_text_for_viewer([], "level:ERROR", "Asia/Tokyo")

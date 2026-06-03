@@ -5,6 +5,6 @@
     "timezone": "Asia/Tokyo",
     "window_geometry": "1200x650+100+100",
     "last_log_paths": [
-        "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-05-27.jsonl"
+        "D:\\PC\\Python\\logger_project\\extra_sample_file\\sample_production_logs_3000.jsonl"
     ]
 }

@@ -18,27 +18,52 @@ def build_text_summary(
     context_numeric_stats: Mapping[str, NumericStats],
     insights: Sequence[str],
 ) -> str:
-    """集計結果をViewerへ出しやすい1行要約へ変換する。"""
+    """集計結果をViewerへ出しやすい複数行要約へ変換する。"""
     condition: str = condition_text if condition_text else "条件なし"
-    parts: list[str] = [f"条件: {condition}", f"件数: {total_count}"]
+    lines: list[str] = [
+        "検索条件",
+        f"  条件: {condition}",
+        f"  件数: {total_count}",
+    ]
+
+    if total_count == 0:
+        lines.extend(["", "該当ログはありません。"])
+        return "\n".join(lines)
+
     if level_counts:
-        levels: str = ", ".join(f"{key}={value}" for key, value in sorted(level_counts.items()))
-        parts.append(f"level: {levels}")
+        lines.extend(["", "レベル別件数"])
+        for key, value in sorted(level_counts.items()):
+            lines.append(f"  - {key}: {value}")
+
     if module_ranking:
-        parts.append("module上位: " + _format_ranking(module_ranking))
+        lines.extend(["", "モジュール上位"])
+        lines.extend(_format_ranking_lines(module_ranking))
+
     if message_ranking:
-        parts.append("message上位: " + _format_ranking(message_ranking))
-    numeric_preview: list[str] = []
+        lines.extend(["", "メッセージ上位"])
+        lines.extend(_format_ranking_lines(message_ranking))
+
     for stat in list(context_numeric_stats.values())[:3]:
-        numeric_preview.append(
-            f"{stat.field} avg={stat.average:.6g} min={stat.minimum:.6g} max={stat.maximum:.6g}"
+        if "数値コンテキスト" not in lines:
+            lines.extend(["", "数値コンテキスト"])
+        lines.extend(
+            [
+                f"  - {stat.field}",
+                f"      件数: {stat.count}",
+                f"      平均: {stat.average:.6g}",
+                f"      最小: {stat.minimum:.6g}",
+                f"      最大: {stat.maximum:.6g}",
+                f"      中央値: {stat.median:.6g}",
+            ]
         )
-    if numeric_preview:
-        parts.append("数値: " + "; ".join(numeric_preview))
+
     if insights:
-        parts.append("所見: " + " ".join(insights))
-    return " / ".join(parts)
+        lines.extend(["", "所見"])
+        for insight in insights:
+            lines.append(f"  - {insight}")
+
+    return "\n".join(lines)
 
 
-def _format_ranking(items: Sequence[RankingItem]) -> str:
-    return ", ".join(f"{item.key}={item.count}" for item in items)
+def _format_ranking_lines(items: Sequence[RankingItem]) -> list[str]:
+    return [f"  - {item.key}: {item.count}" for item in items]
