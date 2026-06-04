@@ -22,7 +22,7 @@ def load_nginx_records(path: Path) -> AdapterResult:
     try:
         records: list[RawRecord] = []
         for line_no, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), start=1):
-            record = parse_access_log_line(line, line_no=line_no, source_format=FileAdapterFormat.NGINX.value)
+            record: RawRecord | None = parse_access_log_line(line, line_no=line_no, source_format=FileAdapterFormat.NGINX.value)
             if record is not None:
                 records.append(record)
         return AdapterResult(records=records, format_name=FileAdapterFormat.NGINX.value, success=bool(records))

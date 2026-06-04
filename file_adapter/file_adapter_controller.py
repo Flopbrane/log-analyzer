@@ -20,9 +20,20 @@ from file_adapter.py_traceback_adapter import load_py_traceback_records
 from file_adapter.sqlite_adapter import load_sqlite_records
 
 
+def _looks_like_web_access_log(text: str) -> bool:
+    return (
+        '"GET ' in text
+        or '"POST ' in text
+        or '"PUT ' in text
+        or '"DELETE ' in text
+        or "HTTP/1." in text
+        or "HTTP/2" in text
+    )
+
+
 def load_records_by_adapter(path: Path) -> AdapterResult:
     """ファイル種別に応じたadapterでraw recordsを読み込む。"""
-    suffix = path.suffix.lower()
+    suffix: str = path.suffix.lower()
     if suffix == ".csv":
         return load_csv_records(path)
     if suffix in {".sqlite", ".sqlite3", ".db"}:
@@ -32,13 +43,19 @@ def load_records_by_adapter(path: Path) -> AdapterResult:
     if suffix in {".traceback", ".tb"}:
         return load_py_traceback_records(path)
 
-    text = _read_preview(path)
+    text: str = _read_preview(path)
+
     if "Traceback (most recent call last):" in text:
         return load_py_traceback_records(path)
 
-    web_result = load_nginx_records(path)
-    if web_result.success:
-        return web_result
+    if _looks_like_web_access_log(text):
+        apache_result: AdapterResult = load_apache_records(path)
+        if apache_result.success:
+            return apache_result
+
+        nginx_result: AdapterResult = load_nginx_records(path)
+        if nginx_result.success:
+            return nginx_result
 
     return AdapterResult(
         records=[],

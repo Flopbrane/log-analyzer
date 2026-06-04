@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, TypeAlias
 
-
-RawRecord = dict[str, Any]
-RawRecords = list[RawRecord]
+RawRecord: TypeAlias = dict[str, Any]
+RawRecords: TypeAlias = list[RawRecord]
 
 
 class FileAdapterFormat(str, Enum):

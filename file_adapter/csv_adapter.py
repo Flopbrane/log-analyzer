@@ -21,10 +21,10 @@ def load_csv_records(path: Path) -> AdapterResult:
     """CSVを1行1dictのraw recordとして読み込む。"""
     try:
         with path.open("r", encoding="utf-8-sig", newline="") as file:
-            reader = csv.DictReader(file)
+            reader: csv.DictReader[str] = csv.DictReader(file)
             records: list[RawRecord] = []
             for row_no, row in enumerate(reader, start=1):
-                record = dict(row)
+                record: RawRecord = dict(row)
                 record.setdefault("event_id", f"csv:{path.name}:{row_no}")
                 record.setdefault("source_format", FileAdapterFormat.CSV.value)
                 record.setdefault("line_no", row_no)

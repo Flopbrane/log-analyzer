@@ -12,8 +12,9 @@ json_adapter.pyは、JSONファイルを読み書きするためのアダプタ�
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 from file_adapter.adapter_types import AdapterResult, FileAdapterFormat, RawRecord
 
@@ -21,28 +22,80 @@ from file_adapter.adapter_types import AdapterResult, FileAdapterFormat, RawReco
 def load_json_records(path: Path) -> AdapterResult:
     """JSON/JSONLをraw recordとして読み込む。"""
     try:
-        text = path.read_text(encoding="utf-8-sig")
-        stripped = text.strip()
+        text: str = path.read_text(encoding="utf-8-sig")
+        stripped: str = text.strip()
+
         if not stripped:
-            return AdapterResult(records=[], format_name=FileAdapterFormat.JSON.value, success=True)
+            return AdapterResult(
+                records=[],
+                format_name=FileAdapterFormat.JSON.value,
+                success=True,
+            )
+
+        records: list[RawRecord]
 
         if stripped.startswith("[") or stripped.startswith("{"):
-            value: Any = json.loads(stripped)
+            value: object = json.loads(stripped)
             records = _records_from_json_value(value)
         else:
-            records = [json.loads(line) for line in text.splitlines() if line.strip()]
+            records = _records_from_jsonl_text(text)
 
-        return AdapterResult(records=records, format_name=FileAdapterFormat.JSON.value, success=True)
+        return AdapterResult(
+            records=records,
+            format_name=FileAdapterFormat.JSON.value,
+            success=True,
+        )
+
     except Exception as exc:
-        return AdapterResult(records=[], format_name=FileAdapterFormat.JSON.value, success=False, error=str(exc))
+        return AdapterResult(
+            records=[],
+            format_name=FileAdapterFormat.JSON.value,
+            success=False,
+            error=str(exc),
+        )
 
 
-def _records_from_json_value(value: Any) -> list[RawRecord]:
+def _records_from_jsonl_text(text: str) -> list[RawRecord]:
+    """JSONL文字列をRawRecordのlistへ変換する。"""
+    records: list[RawRecord] = []
+
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+
+        value: object = json.loads(line)
+
+        if isinstance(value, dict):
+            records.append(cast(RawRecord, value))
+
+    return records
+
+
+def _records_from_json_value(value: object) -> list[RawRecord]:
+    """JSON値をRawRecordのlistへ変換する。"""
     if isinstance(value, list):
-        return [item for item in value if isinstance(item, dict)]
+        values: list[object] = cast(list[object], value)
+        return _records_from_list(values)
+
     if isinstance(value, dict):
-        records_value: Any = value.get("records")
+        raw_value: RawRecord = cast(RawRecord, value)
+        records_value: object = raw_value.get("records")
+
         if isinstance(records_value, list):
-            return [item for item in records_value if isinstance(item, dict)]
-        return [value]
+            values = cast(list[object], records_value)
+            return _records_from_list(values)
+
+        return [raw_value]
+
     return []
+
+
+def _records_from_list(values: Iterable[object]) -> list[RawRecord]:
+    """list内のdict要素だけをRawRecordとして取り出す。"""
+    records: list[RawRecord] = []
+
+    for item in values:
+        if isinstance(item, dict):
+            records.append(cast(RawRecord, item))
+
+    return records
