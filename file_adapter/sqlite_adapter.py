@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from file_adapter.adapter_types import AdapterResult, FileAdapterFormat, RawRecord
 
@@ -22,13 +23,13 @@ def load_sqlite_records(path: Path) -> AdapterResult:
     try:
         with sqlite3.connect(path) as conn:
             conn.row_factory = sqlite3.Row
-            table = _select_table(conn)
+            table: str | None = _select_table(conn)
             if table is None:
                 return AdapterResult(records=[], format_name=FileAdapterFormat.SQLITE.value, success=False, error="no table")
-            rows = conn.execute(f'SELECT * FROM "{table}"').fetchall()
+            rows: list[Any] = conn.execute(f'SELECT * FROM "{table}"').fetchall()
             records: list[RawRecord] = []
             for row_no, row in enumerate(rows, start=1):
-                record = dict(row)
+                record: RawRecord = dict(row)
                 record.setdefault("event_id", f"sqlite:{table}:{row_no}")
                 record.setdefault("source_format", FileAdapterFormat.SQLITE.value)
                 record.setdefault("row_no", row_no)
@@ -39,10 +40,10 @@ def load_sqlite_records(path: Path) -> AdapterResult:
 
 
 def _select_table(conn: sqlite3.Connection) -> str | None:
-    rows = conn.execute(
+    rows: list[Any] = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     ).fetchall()
-    names = [str(row[0]) for row in rows]
+    names: list[str] = [str(row[0]) for row in rows]
     if "logs" in names:
         return "logs"
     return names[0] if names else None

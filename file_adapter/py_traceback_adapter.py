@@ -16,14 +16,14 @@ from pathlib import Path
 
 from file_adapter.adapter_types import AdapterResult, FileAdapterFormat, RawRecord
 
-FRAME_PATTERN = re.compile(r'^\s*File "(?P<file>[^"]+)", line (?P<line>\d+)')
+FRAME_PATTERN: re.Pattern[str] = re.compile(r'^\s*File "(?P<file>[^"]+)", line (?P<line>\d+)')
 
 
 def load_py_traceback_records(path: Path) -> AdapterResult:
     """Python tracebackテキストを1件のERROR raw recordへ変換する。"""
     try:
-        text = path.read_text(encoding="utf-8-sig")
-        record = parse_traceback_text(text, source_name=path.name)
+        text: str = path.read_text(encoding="utf-8-sig")
+        record: RawRecord | None = parse_traceback_text(text, source_name=path.name)
         return AdapterResult(
             records=[] if record is None else [record],
             format_name=FileAdapterFormat.PY_TRACEBACK.value,
@@ -37,14 +37,14 @@ def parse_traceback_text(text: str, *, source_name: str) -> RawRecord | None:
     if "Traceback (most recent call last):" not in text:
         return None
 
-    frames: list[dict[str, object]] = []
+    frames: list[RawRecord] = []
     for line in text.splitlines():
-        match = FRAME_PATTERN.match(line)
+        match: re.Match[str] | None = FRAME_PATTERN.match(line)
         if match is not None:
             frames.append({"file": match.group("file"), "line": int(match.group("line"))})
 
-    message = _last_non_empty_line(text)
-    last_frame = frames[-1] if frames else {}
+    message: str = _last_non_empty_line(text)
+    last_frame: RawRecord = frames[-1] if frames else {}
     return {
         "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "level": "ERROR",
@@ -59,7 +59,7 @@ def parse_traceback_text(text: str, *, source_name: str) -> RawRecord | None:
 
 def _last_non_empty_line(text: str) -> str:
     for line in reversed(text.splitlines()):
-        stripped = line.strip()
+        stripped: str = line.strip()
         if stripped:
             return stripped
     return "Python traceback"
