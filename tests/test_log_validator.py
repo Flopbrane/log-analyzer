@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from logs.log_searcher import collect_logs
 from logs.log_analysis import LogType, detect_log_type
+from logs.log_searcher import collect_logs
+from logs.log_types import LogDict
 from logs.log_validator import validate_log
 
 
 def test_validate_log_keeps_logger_project_log_unchanged() -> None:
-    row = {
+    row: dict[str, str | dict[str, str]] = {
         "level": "WARNING",
         "time": "2026-06-03T03:59:52+00:00",
         "trace_id": "trace-1",
@@ -18,7 +19,7 @@ def test_validate_log_keeps_logger_project_log_unchanged() -> None:
         "output": "both",
     }
 
-    log = validate_log(row)
+    log: LogDict | None = validate_log(row)
 
     assert detect_log_type(row) == LogType.LOGGER_PROJECT
     assert log is not None
@@ -28,7 +29,7 @@ def test_validate_log_keeps_logger_project_log_unchanged() -> None:
 
 
 def test_validate_log_accepts_flat_production_log() -> None:
-    row = {
+    row: dict[str, str] = {
         "timestamp": "2026-06-01T09:00:00+00:00",
         "level": "INFO",
         "module": "api",
@@ -36,14 +37,16 @@ def test_validate_log_accepts_flat_production_log() -> None:
         "message": "Configuration loaded",
     }
 
-    log = validate_log(row)
+    log: LogDict | None = validate_log(row)
 
     assert detect_log_type(row) == LogType.FLAT_PRODUCTION
     assert log is not None
     assert log["time"] == "2026-06-01T09:00:00+00:00"
     assert log["trace_id"] == "EVT-000000"
     assert log["level"] == "INFO"
+    assert "module" in log["where"]
     assert log["where"]["module"] == "api"
+    assert "message" in log["what"]
     assert log["what"]["message"] == "Configuration loaded"
     assert log["what"]["message"] != str(row)
     assert log["context"]["original_row"] == row
@@ -57,6 +60,8 @@ def test_collect_logs_loads_sample_production_logs() -> None:
 
     assert len(logs) == 3000
     assert logs[0]["trace_id"].startswith("EVT-")
+    assert "module" in logs[0]["where"]
     assert logs[0]["where"]["module"]
+    assert "message" in logs[0]["what"]
     assert logs[0]["what"]["message"]
     assert logs[0]["context"]["original_row"]["event_id"].startswith("EVT-")

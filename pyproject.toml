@@ -16,3 +16,19 @@ dependencies = []
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+include = [
+    "logs",
+    "query_engine",
+    "summary_engine",
+    "tests",
+]
+exclude = [
+    "logs/__pycache__",
+    "query_engine/__pycache__",
+    "summary_engine/__pycache__",
+    "tests/__pycache__",
+]
