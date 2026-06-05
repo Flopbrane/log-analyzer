@@ -31,7 +31,6 @@ from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.multi_info_logger import AppLogger
 from logs.openai_key_store import delete_openai_api_key, has_openai_api_key, is_keyring_available, save_openai_api_key
-from logs.query_error_bridge import build_query_error_text
 from logs.search_matcher import apply_result_modifiers, match_search_query, run_aggregate_query
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
@@ -39,6 +38,7 @@ from logs.search_text_preprocessor import build_search_text_datetime
 from logs.summary_bridge import summarize_logs_for_viewer
 from logs.time_utils import to_world_local_datetime
 from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
+from query_engine.query_error_formatter import build_query_error_text
 from summary_engine.summary_types import SummaryResult
 
 WindowWidget = tk.Tk | tk.Toplevel

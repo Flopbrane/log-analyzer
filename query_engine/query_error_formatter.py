@@ -9,7 +9,13 @@ from typing import Any, Mapping, Sequence
 
 from zoneinfo import ZoneInfo
 
-from logs.error_response_dict import DATETIME_FIELDS, EXPECTED_HINTS, FIELD_ALIASES, FIELD_VALUE_SUGGESTIONS, KNOWN_FIELDS
+from query_engine.suggestions import (
+    DATETIME_FIELDS,
+    EXPECTED_HINTS,
+    FIELD_ALIASES,
+    FIELD_VALUE_SUGGESTIONS,
+    KNOWN_FIELDS,
+)
 
 POSITION_PATTERN: re.Pattern[str] = re.compile(r"position\s+(\d+)", flags=re.IGNORECASE)
 FIELD_PREFIX_PATTERN: re.Pattern[str] = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*:\s*$")
@@ -110,18 +116,22 @@ def _build_suggestions(
         field: str = _normalize_field(field_match.group(1))
         values: tuple[str, ...] = _field_value_suggestions(field, rows, timezone_name)
         return [f"{field}:{value}" for value in values]
-    
-    value: str = stripped.split(":", 1)[-1].strip() if ":" in stripped else ""
-    
-    if value:
-        close_values: list[str] = difflib.get_close_matches(value, FIELD_VALUE_SUGGESTIONS.get(expected, ()), n=3, cutoff=0.72)
-        return close_values
-    
+
+    value: str
+
     if ":" in stripped:
         field, value = stripped.split(":", 1)
         normalized: str = _normalize_field(field.strip())
         if normalized != field.strip() and value:
             return [f"{normalized}:{value.strip()}"]
+        if value:
+            close_values: list[str] = difflib.get_close_matches(
+                value,
+                FIELD_VALUE_SUGGESTIONS.get(normalized, ()),
+                n=3,
+                cutoff=0.72,
+            )
+            return [f"{normalized}:{close_value}" for close_value in close_values]
 
     first_word: str = stripped.split(":", 1)[0].split(" ", 1)[0].strip()
 

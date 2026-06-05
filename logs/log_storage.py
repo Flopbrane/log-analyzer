@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
+from file_adapter.adapter_types import AdapterResult
 from file_adapter.extra_file_storage import load_extra_records
 
 
@@ -21,7 +22,7 @@ def load_log(log_path: Path) -> list[dict[str, Any]]:
     if log_entries is not None:
         return log_entries
 
-    result = load_extra_records(log_path)
+    result: AdapterResult = load_extra_records(log_path)
     if result.success:
         return result.records
 
@@ -40,7 +41,7 @@ def _load_json_lines(log_path: Path) -> list[dict[str, Any]] | None:
                 value: Any = json.loads(line)
                 if not isinstance(value, dict):
                     return None
-                log_entries.append(value)
+                log_entries.append(cast(dict[str, Any], value))
     except Exception:
         return None
     return log_entries

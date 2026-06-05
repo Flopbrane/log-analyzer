@@ -1,5 +1,13 @@
-"""検索DSLとSQLで特別扱いされる予約語リスト。"""
+# -*- coding: utf-8 -*-
+"""検索DSLとSQLで特別扱いされる予約語リスト。
+これは検索語ではなく、構文上の予約語ですよ。"""
 from __future__ import annotations
+
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
 
 DSL_RESERVED_WORDS: frozenset[str] = frozenset(
     {

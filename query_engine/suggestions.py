@@ -1,4 +1,13 @@
-"""TraceQL構文エラー時の候補生成に使う辞書。"""
+# -*- coding: utf-8 -*-
+"""TraceQL構文エラー時の候補生成に使う辞書。
+TraceQL構文エラー時に候補を出すための辞書や定数を定義しています。
+これらはquery_engineの内部でのみ使用され、logs層やViewerには直接関係しません。
+将来的には、これらの定数や辞書を外部から拡張できるようにすることも検討しています。"""
+#########################
+# Author: F.Kurokawa
+# Description:
+#
+#########################
 from __future__ import annotations
 
 FIELD_VALUE_SUGGESTIONS: dict[str, tuple[str, ...]] = {
