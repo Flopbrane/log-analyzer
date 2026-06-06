@@ -26,7 +26,7 @@ logs/*.log
 *.temp
 *.bak
 _tzinfo_data/
-
+analysis_out/
 # =========================
 # 🖥️ VSCode / 開発環境
 # =========================
@@ -34,7 +34,7 @@ _tzinfo_data/
 *.code-workspace
 contents_class_def/
 .ruff_cache/
-
+.pytest_cache/
 # =========================
 # 🪟 OS関連
 # =========================

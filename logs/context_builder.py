@@ -114,20 +114,15 @@ def get_caller_context(depth: int = 2) -> ContextDict:
 # =================================
 def context_for_program(
     state: str,
-    detail: str = "",
+    detail: str | None = None,
     caller_depth: int = 2,
     **extra: Any,
 ) -> ContextDict:
     """プログラム状態用のcontextを作る。"""
     context: ContextDict = get_caller_context(depth=caller_depth)
-
-    context.update(
-        {
-            "state": state,
-            "detail": detail,
-        }
-    )
-
+    context["state"] = state
+    if detail:
+        context["detail"] = detail
     context.update(extra)
     return context
 
