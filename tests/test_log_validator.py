@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from logs.log_analysis import LogType, detect_log_type
+from logs.log_normalizer import LogType, detect_log_type, normalize_log_record
 from logs.log_searcher import collect_logs
 from logs.log_types import LogDict
 from logs.log_validator import validate_log
@@ -65,3 +65,41 @@ def test_collect_logs_loads_sample_production_logs() -> None:
     assert "message" in logs[0]["what"]
     assert logs[0]["what"]["message"]
     assert logs[0]["context"]["original_row"]["event_id"].startswith("EVT-")
+
+
+def test_normalizer_accepts_nested_json_log() -> None:
+    row = {
+        "time": "2026-06-01T09:00:00+00:00",
+        "severity": "ERROR",
+        "service": {"name": "auth"},
+        "event": {"id": "AUTH-001", "message": "Login Failed"},
+        "user": {"id": "user001"},
+    }
+
+    normalized = normalize_log_record(row)
+    log = validate_log(row)
+
+    assert detect_log_type(row) == LogType.NESTED_JSON
+    assert normalized["where"]["module"] == "auth"
+    assert log is not None
+    assert log["trace_id"] == "AUTH-001"
+    assert log["what"]["message"] == "Login Failed"
+    assert log["context"]["original_row"]["user"]["id"] == "user001"
+
+
+def test_normalizer_accepts_windows_event_log() -> None:
+    row = {
+        "EventID": 4625,
+        "Level": "Error",
+        "Provider": "Microsoft-Windows-Security-Auditing",
+        "Message": "An account failed to log on.",
+        "TimeCreated": "2026-06-01T09:00:00+00:00",
+    }
+
+    log = validate_log(row)
+
+    assert detect_log_type(row) == LogType.WINDOWS_EVENT
+    assert log is not None
+    assert log["level"] == "ERROR"
+    assert log["trace_id"] == "4625"
+    assert log["where"]["module"] == "Microsoft-Windows-Security-Auditing"

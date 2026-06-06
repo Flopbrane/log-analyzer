@@ -37,8 +37,8 @@ from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
 from logs.summary_bridge import summarize_logs_for_viewer
 from logs.time_utils import to_world_local_datetime
+from logs.traceql_bridge import build_traceql_query_error_text
 from logs.tzinfo_formatter import TimeZoneData, TimeZoneItem, build_timezone_data
-from query_engine.query_error_formatter import build_query_error_text
 from summary_engine.summary_types import SummaryResult
 
 WindowWidget = tk.Tk | tk.Toplevel
@@ -1135,7 +1135,7 @@ class LogViewer:
         if not isinstance(error, str) or not error:
             return ""
 
-        return build_query_error_text(query, error, self.raw_rows, self.current_tz)
+        return build_traceql_query_error_text(query, error, self.raw_rows, self.current_tz)
 
     def _get_event(
         self,

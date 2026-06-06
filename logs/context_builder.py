@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import inspect
 import traceback
+from collections.abc import Mapping
 from datetime import date, datetime
 from pathlib import Path
 from types import FrameType, ModuleType
@@ -24,6 +25,8 @@ WrappedContextDict: TypeAlias = dict[str, WrappedContextValue]
 
 def detect_context_type(value: Any) -> ContextType:
     """値からContextTypeを推定する。"""
+    if value is None:
+        return ContextType.NONE
     if isinstance(value, datetime):
         return ContextType.DATETIME
     if isinstance(value, date):
@@ -45,8 +48,13 @@ def detect_context_type(value: Any) -> ContextType:
     return ContextType.ANY
 
 
-def ctx(**kwargs: Any) -> ContextDict:
-    """普通のcontextを作る。"""
+def ctx(**kwargs: Any) -> WrappedContextDict:
+    """Logger保存用のtype/value付きcontextを作る。"""
+    return wrap_context(kwargs)
+
+
+def plain_context(**kwargs: Any) -> ContextDict:
+    """type/valueを付けない普通のcontextを作る。"""
     return dict(kwargs)
 
 
@@ -63,7 +71,7 @@ def wrap_context_value(value: Any) -> WrappedContextValue:
     }
 
 
-def wrap_context(context: ContextDict) -> WrappedContextDict:
+def wrap_context(context: Mapping[str, Any]) -> WrappedContextDict:
     """普通のcontextを、type/value付きcontextへ変換する。"""
     return {key: wrap_context_value(value) for key, value in context.items()}
 
@@ -101,9 +109,9 @@ def get_caller_context(depth: int = 2) -> ContextDict:
         "line_no": frame.f_lineno,
     }
 
-# =======================
+# =================================
 # 便利なcontext構築関数群
-# =======================
+# =================================
 def context_for_program(
     state: str,
     detail: str = "",
@@ -175,6 +183,20 @@ def context_for_adapter(
         "load_file_path": load_file_path,
         "record_count": record_count,
         "error": error,
+    }
+    context.update(extra)
+    return context
+
+
+def context_for_validation_error(
+    reason: str,
+    raw: Mapping[str, Any],
+    **extra: Any,
+) -> ContextDict:
+    """ログ検証エラー用のcontextを作る。"""
+    context: ContextDict = {
+        "reason": reason,
+        "raw": dict(raw),
     }
     context.update(extra)
     return context
@@ -260,6 +282,7 @@ def context_for_http_access(
     status: int | None = None,
     bytes_sent: int | None = None,
     user_agent: str = "",
+    server: str = "",
     **extra: Any,
 ) -> ContextDict:
     """HTTPアクセス用のcontextを作る。"""
@@ -270,6 +293,7 @@ def context_for_http_access(
         "status": status,
         "bytes_sent": bytes_sent,
         "user_agent": user_agent,
+        "server": server,
     }
     context.update(extra)
     return context
@@ -285,16 +309,16 @@ def context_for_apache_access(
     **extra: Any,
 ) -> ContextDict:
     """Apacheアクセス用のcontextを作る。"""
-    context: ContextDict = {
-        "ip": ip,
-        "method": method,
-        "path": path,
-        "status": status,
-        "bytes_sent": bytes_sent,
-        "user_agent": user_agent,
-    }
-    context.update(extra)
-    return context
+    return context_for_http_access(
+        ip=ip,
+        method=method,
+        path=path,
+        status=status,
+        bytes_sent=bytes_sent,
+        user_agent=user_agent,
+        server="apache",
+        **extra,
+    )
 
 
 def context_for_nginx_access(
@@ -307,16 +331,16 @@ def context_for_nginx_access(
     **extra: Any,
 ) -> ContextDict:
     """Nginxアクセス用のcontextを作る。"""
-    context: ContextDict = {
-        "ip": ip,
-        "method": method,
-        "path": path,
-        "status": status,
-        "bytes_sent": bytes_sent,
-        "user_agent": user_agent,
-    }
-    context.update(extra)
-    return context
+    return context_for_http_access(
+        ip=ip,
+        method=method,
+        path=path,
+        status=status,
+        bytes_sent=bytes_sent,
+        user_agent=user_agent,
+        server="nginx",
+        **extra,
+    )
 
 
 def context_for_csv(
@@ -356,6 +380,24 @@ def context_for_sqlite(
     context: ContextDict = {
         "file_path": file_path,
         "table_name": table_name,
+    }
+    context.update(extra)
+    return context
+
+
+def context_for_traceback(
+    exception_type: str,
+    message: str,
+    file_path: str = "",
+    line_no: int | None = None,
+    **extra: Any,
+) -> ContextDict:
+    """Python traceback用のcontextを作る。"""
+    context: ContextDict = {
+        "exception_type": exception_type,
+        "message": message,
+        "file_path": file_path,
+        "line_no": line_no,
     }
     context.update(extra)
     return context

@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from logs.log_analysis import LogType, detect_log_type, normalize_external_log
+from logs.context_builder import context_for_validation_error
 from logs.log_app import get_logger
+from logs.log_normalizer import normalize_log_record
 from logs.log_types import LogDict, LogWhat
 
 if TYPE_CHECKING:
@@ -22,12 +23,7 @@ def validate_log(
     logger: "AppLogger" = get_logger()
 ) -> LogDict | None:
     """Unsafe → Safe変換"""
-    log_type: LogType = detect_log_type(raw)
-    normalized: dict[str, Any] = (
-        dict(raw)
-        if log_type == LogType.LOGGER_PROJECT
-        else normalize_external_log(raw)
-    )
+    normalized: dict[str, Any] = normalize_log_record(raw)
 
     # time
     if not isinstance(normalized.get("time"), str):  # type: ignore[reportUnnecessaryIsInstance]
@@ -99,8 +95,5 @@ def _warn_invalid_log(logger: "AppLogger", reason: str, raw: dict[str, Any]) -> 
     """invalid警告では元ログをmessageへ埋め込まずcontextへ残す。"""
     logger.warning(
         f"invalid log: {reason}",
-        context={
-            "reason": reason,
-            "raw": raw,
-        },
+        context=context_for_validation_error(reason, raw),
     )

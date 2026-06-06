@@ -246,3 +246,229 @@ The project is evolving toward:
 * context-driven analytics
 
 Maintain clean dependency direction to support future package separation.
+
+---
+
+## Architecture Principles
+
+### Long-Term Vision
+
+This project is evolving from a structured logger into a multi-format document analysis platform.
+
+Future architecture:
+
+```text
+File
+    ↓
+Adapter
+    ↓
+RawRecord
+    ↓
+Normalizer
+    ↓
+UnifiedDocument
+    ↓
+QueryEngine
+    ↓
+SummaryEngine
+    ↓
+Viewer
+```
+
+The final goal is to support multiple document and log formats while providing a unified search, analysis, and summarization experience.
+
+---
+
+### Layer Responsibilities
+
+#### Adapter Layer
+
+The adapter layer is responsible for:
+
+* reading source files
+* detecting file formats
+* extracting raw records
+
+The adapter layer must NOT:
+
+* normalize data
+* search data
+* summarize data
+* format UI output
+
+Adapter output should be:
+
+```python
+list[RawRecord]
+```
+
+#### Normalizer Layer
+
+The normalizer layer is responsible for:
+
+* normalizing field names
+* normalizing timestamps
+* normalizing common values
+* converting source-specific records into common structures
+
+Example:
+
+```text
+client_ip
+remote_addr
+ip_address
+    ↓
+ip
+```
+
+The normalizer layer must NOT:
+
+* search data
+* summarize data
+* render UI
+
+Normalizer output should be:
+
+```python
+NormalizedRecord
+```
+
+#### Unified Document Layer
+
+The unified document layer provides a common internal document model regardless of source format.
+
+All downstream systems should operate on unified documents or normalized records rather than source-specific file formats.
+
+#### Query Engine
+
+The query engine is responsible for:
+
+* parsing query expressions
+* building query plans
+* filtering document collections
+
+The query engine must NOT:
+
+* render UI
+* summarize results
+* read files directly
+
+#### Summary Engine
+
+The summary engine is responsible for:
+
+* aggregating results
+* generating statistical summaries
+* detecting trends and anomalies
+
+The summary engine must NOT:
+
+* parse queries
+* read files
+* render UI
+
+#### Viewer
+
+The viewer is responsible for:
+
+* displaying information
+* accepting user input
+* triggering search and summary actions
+
+The viewer must NOT:
+
+* perform analysis logic
+* parse source file formats
+* implement query language logic
+
+---
+
+### Dependency Rules
+
+Allowed dependency direction:
+
+```text
+Viewer
+    ↓
+Bridge / Controller
+    ↓
+QueryEngine / SummaryEngine
+    ↓
+Normalizer
+    ↓
+Adapter
+```
+
+Avoid dependency direction:
+
+```text
+Adapter → Viewer
+SummaryEngine → Adapter
+QueryEngine → Viewer
+Viewer → Adapter internals
+```
+
+Cross-layer dependencies should be minimized. When a layer boundary is needed, use a bridge or controller module rather than importing internals directly.
+
+---
+
+### Context System
+
+Context helpers are shared infrastructure.
+
+Examples:
+
+```python
+context_for_program()
+context_for_exception()
+context_for_loader()
+context_for_saver()
+```
+
+Context generation should remain independent of:
+
+* Viewer
+* Query Engine
+* Summary Engine
+
+---
+
+### Future Recipe System
+
+The future system may support user-defined diagnostic recipes.
+
+Example:
+
+```text
+Purpose: Check HTTP 500 errors
+Filter: status >= 500
+Group By: ip
+Summary: enabled
+```
+
+Recipe files should be translated into internal query plans rather than directly executed.
+
+---
+
+### Design Philosophy
+
+Prefer:
+
+* simple interfaces
+* explicit responsibilities
+* layer isolation
+* human-friendly workflows
+
+Do not optimize for creating a complex query language.
+
+Optimize for helping users quickly understand large amounts of information with minimal technical knowledge.
+
+Core principle:
+
+```text
+Adapters do not search.
+Normalizers do not summarize.
+Query engines do not render.
+Summary engines do not search.
+Viewers do not analyze.
+```

@@ -19,6 +19,7 @@ from logs.log_types import LogDict
 from query_engine.evaluators.memory import match_query
 from query_engine.models import Document
 from query_engine.parser import QuerySyntaxError
+from query_engine.query_error_formatter import build_query_error_text as build_traceql_query_error_text
 
 SORT_PATTERN: re.Pattern[str] = re.compile(
     r"^(?P<body>.*?)"

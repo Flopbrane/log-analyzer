@@ -43,7 +43,7 @@ def test_load_log_falls_back_to_web_log_adapter(tmp_path: Path) -> None:
 
     assert len(logs) == 2
     assert logs[1]["level"] == "WARNING"
-    assert logs[1]["trace_id"] == "nginx:2"
+    assert logs[1]["trace_id"] == "apache:2"
     assert logs[1]["context"]["status"] == 401
     assert logs[1]["context"]["path"] == "/login"
 
