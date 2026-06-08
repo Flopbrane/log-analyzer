@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+"""LogViewer の検索テキストボックス用テストスクリプト。"""
+
 from __future__ import annotations
 
 import json
@@ -8,14 +10,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, cast
-from zoneinfo import ZoneInfo
 
-"""LogViewer の検索テキストボックス用テストスクリプト。"""
+from zoneinfo import ZoneInfo
 
 #########################
 # Author: F.Kurokawa
 # Description: LogViewer の検索テキストボックスに入力された文字列を解析するテストスクリプト。
-# LogViewer の検索テキストボックスに入力された文字列を解析するテストスクリプト。
 #########################
 """LogViewer の検索テキストボックス用テストスクリプト。
 

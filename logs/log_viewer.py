@@ -31,6 +31,12 @@ from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.multi_info_logger import AppLogger
 from logs.openai_key_store import delete_openai_api_key, has_openai_api_key, is_keyring_available, save_openai_api_key
+from logs.result_exporter import (
+    export_event_logs_to_csv,
+    export_investigation_report_json,
+    export_summary_to_csv,
+    export_to_json,
+)
 from logs.search_matcher import apply_result_modifiers, match_search_query, run_aggregate_query
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
@@ -108,6 +114,10 @@ class LogViewer:
         self.type_label: tk.Label
         self.search_label: tk.Label
         self.search_button: tk.Button
+        self.summary_button: tk.Button
+        self.export_csv_button: tk.Button
+        self.export_json_button: tk.Button
+        self.export_report_button: tk.Button
         self.search_var = tk.StringVar()
         self.aggregate_result_var = tk.StringVar()
 
@@ -469,6 +479,73 @@ class LogViewer:
         )
         SummaryWindow(self.root, result, self.language)
 
+    def export_filtered_events_csv(self) -> None:
+        """検索結果からEvent化できた有意ログをCSVへ保存する。"""
+        events: list[Event] = self._build_events(self.filtered_rows)
+        if not events:
+            messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
+            return
+
+        output_path: Path | None = export_event_logs_to_csv(events)
+        if output_path is None:
+            return
+        messagebox.showinfo(
+            self._t("export_complete_title"),
+            self._t("export_complete_message").format(path=output_path),
+        )
+
+    def export_filtered_bundle_json(self) -> None:
+        """検索結果Eventと要約をJSONへ保存する。"""
+        events: list[Event] = self._build_events(self.filtered_rows)
+        if not events:
+            messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
+            return
+
+        summary: SummaryResult = summarize_logs_for_viewer(
+            [event.raw for event in events],
+            self.search_var.get(),
+            self.current_tz,
+        )
+        output_path: Path | None = export_to_json(
+            logs=(event.raw for event in events),
+            events=events,
+            summary=summary,
+        )
+        if output_path is None:
+            return
+        messagebox.showinfo(
+            self._t("export_complete_title"),
+            self._t("export_complete_message").format(path=output_path),
+        )
+
+    def export_investigation_report(self) -> None:
+        """検索条件・Event・要約を調査レポートJSONへ保存する。"""
+        events: list[Event] = self._build_events(self.filtered_rows)
+        if not events:
+            messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
+            return
+
+        logs: list[LogDict] = [event.raw for event in events]
+        summary: SummaryResult = summarize_logs_for_viewer(
+            logs,
+            self.search_var.get(),
+            self.current_tz,
+        )
+        output_path: Path | None = export_investigation_report_json(
+            logs=logs,
+            events=events,
+            summary=summary,
+            condition_text=self.search_var.get(),
+            timezone_name=self.current_tz,
+            source_files=self.last_log_paths,
+        )
+        if output_path is None:
+            return
+        messagebox.showinfo(
+            self._t("export_complete_title"),
+            self._t("export_complete_message").format(path=output_path),
+        )
+
     # =======================
     # UI構築(メイン・ウインド)
     # =======================
@@ -535,6 +612,28 @@ class LogViewer:
             command=self.open_summary_window,
         )
         self.summary_button.pack(side=tk.LEFT, padx=(8, 0))
+
+        self.export_csv_button = tk.Button(
+            filter_frame,
+            text=self._t("button_export_result_csv"),
+            command=self.export_filtered_events_csv,
+        )
+        self.export_csv_button.pack(side=tk.LEFT, padx=(8, 0))
+
+        self.export_json_button = tk.Button(
+            filter_frame,
+            text=self._t("button_export_result_json"),
+            command=self.export_filtered_bundle_json,
+        )
+        self.export_json_button.pack(side=tk.LEFT, padx=(8, 0))
+
+        self.export_report_button = tk.Button(
+            filter_frame,
+            text=self._t("button_export_report"),
+            command=self.export_investigation_report,
+        )
+        self.export_report_button.pack(side=tk.LEFT, padx=(8, 0))
+
         tk.Label(
             filter_frame,
             textvariable=self.aggregate_result_var,
@@ -1346,7 +1445,7 @@ class SummaryWindow:
 
     def __init__(self, parent: WindowWidget, result: SummaryResult, language: LanguageCode) -> None:
         self.parent = parent
-        self.result = result
+        self.result: SummaryResult = result
         self.language = language
         self.window = tk.Toplevel(parent)
         self.window.title(self._t("dialog_summary_title"))
@@ -1374,6 +1473,16 @@ class SummaryWindow:
             text=self._t("button_copy_summary"),
             command=self._copy_summary,
         ).pack(side=tk.RIGHT, padx=(0, 8))
+        tk.Button(
+            button_frame,
+            text=self._t("button_export_summary_json"),
+            command=self._export_summary_json,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
+        tk.Button(
+            button_frame,
+            text=self._t("button_export_summary_csv"),
+            command=self._export_summary_csv,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
 
         y_scrollbar = tk.Scrollbar(frame)
         y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -1399,6 +1508,26 @@ class SummaryWindow:
     def _copy_summary(self) -> None:
         self.window.clipboard_clear()
         self.window.clipboard_append(self.result.text)
+
+    def _export_summary_csv(self) -> None:
+        output_path: Path | None = export_summary_to_csv(self.result)
+        if output_path is None:
+            return
+        messagebox.showinfo(
+            self._t("export_complete_title"),
+            self._t("export_complete_message").format(path=output_path),
+            parent=self.window,
+        )
+
+    def _export_summary_json(self) -> None:
+        output_path: Path | None = export_to_json(summary=self.result)
+        if output_path is None:
+            return
+        messagebox.showinfo(
+            self._t("export_complete_title"),
+            self._t("export_complete_message").format(path=output_path),
+            parent=self.window,
+        )
 
 
 if __name__ == "__main__":
