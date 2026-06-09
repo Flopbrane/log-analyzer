@@ -472,3 +472,14 @@ Query engines do not render.
 Summary engines do not search.
 Viewers do not analyze.
 ```
+
+### directory structure
+
+```text
+*.fv (Filter & Summary Script)
+
+目的:
+検索・要約・出力を自動化するDSL
+
+将来的にMulti Documents Viewerの共通調査言語とする
+```
