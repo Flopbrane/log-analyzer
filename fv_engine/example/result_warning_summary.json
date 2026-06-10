@@ -1,0 +1,280 @@
+{
+  "exported_at": "2026-06-10T05:07:45+00:00",
+  "logs": [
+    {
+      "level": "WARNING",
+      "time": "2026-04-22T10:39:57+00:00",
+      "trace_id": "fc036f388b7542c48117d55c8ec1728c",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\log_validator.py",
+        "line": 32,
+        "function": "validate_log",
+        "module": "D:\\PC\\Python\\alarm\\logs\\log_validator.py"
+      },
+      "what": {
+        "message": "invalid log: missing trace_id → {'level': 'INFO', 'time': '2026-03-22T17:23:49', 'trace_id': None, 'where': {'line': 89, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'function': 'load_alarms'}, 'what': {'message': 'alarm.json が存在しません'}, 'context': {'path': 'alarm_sample.json'}, 'output': 'both'}"
+      },
+      "context": {},
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-22T10:39:57+00:00",
+      "trace_id": "fc036f388b7542c48117d55c8ec1728c",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\log_validator.py",
+        "line": 32,
+        "function": "validate_log",
+        "module": "D:\\PC\\Python\\alarm\\logs\\log_validator.py"
+      },
+      "what": {
+        "message": "invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '1000'}, 'output': 'both'}"
+      },
+      "context": {},
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-22T10:39:57+00:00",
+      "trace_id": "fc036f388b7542c48117d55c8ec1728c",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\log_validator.py",
+        "line": 32,
+        "function": "validate_log",
+        "module": "D:\\PC\\Python\\alarm\\logs\\log_validator.py"
+      },
+      "what": {
+        "message": "invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '9999'}, 'output': 'both'}"
+      },
+      "context": {},
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-23T05:49:46+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 41,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_warning"
+      },
+      "context": {
+        "warning_level": "high"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-23T05:49:46+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 59,
+        "function": "_check_reboot",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_reboot_detected"
+      },
+      "context": {
+        "category": "system",
+        "status": "reboot",
+        "previous_boot_time": 1776589665.2794566,
+        "current_boot_time": 1776590665.2794566,
+        "detected_at": "2026-04-23T14:49:46.765535"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-23T06:00:37+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 41,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_warning"
+      },
+      "context": {
+        "warning_level": "high"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-23T06:00:37+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 60,
+        "function": "_check_reboot",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_reboot_detected"
+      },
+      "context": {
+        "category": "system",
+        "status": "reboot",
+        "previous_boot_time": 1776589665.2793489,
+        "current_boot_time": 1776590665.2793489,
+        "detected_at": "2026-04-23T15:00:37.575399"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-24T01:15:53+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 41,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_warning"
+      },
+      "context": {
+        "warning_level": "high"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-24T01:15:53+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 60,
+        "function": "_check_reboot",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_reboot_detected"
+      },
+      "context": {
+        "category": "system",
+        "status": "reboot",
+        "previous_boot_time": 1776589665.2793486,
+        "current_boot_time": 1776590665.2793486,
+        "detected_at": "2026-04-24T10:15:53.846021"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-24T01:16:39+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 41,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_warning"
+      },
+      "context": {
+        "warning_level": "high"
+      },
+      "output": "both"
+    },
+    {
+      "level": "WARNING",
+      "time": "2026-04-24T01:16:39+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 60,
+        "function": "_check_reboot",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_reboot_detected"
+      },
+      "context": {
+        "category": "system",
+        "status": "reboot",
+        "previous_boot_time": 1776589665.2793486,
+        "current_boot_time": 1776590665.2793486,
+        "detected_at": "2026-04-24T10:16:39.247365"
+      },
+      "output": "both"
+    }
+  ],
+  "events": [],
+  "summary": {
+    "total_count": 11,
+    "condition_text": "level:WARNING",
+    "level_counts": {
+      "WARNING": 11
+    },
+    "module_ranking": [
+      {
+        "key": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "count": 4
+      },
+      {
+        "key": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "count": 4
+      },
+      {
+        "key": "D:\\PC\\Python\\alarm\\logs\\log_validator.py",
+        "count": 3
+      }
+    ],
+    "message_ranking": [
+      {
+        "key": "system_reboot_detected",
+        "count": 4
+      },
+      {
+        "key": "test_warning",
+        "count": 4
+      },
+      {
+        "key": "invalid log: missing trace_id → {'level': 'INFO', 'time': '2026-03-22T17:23:49', 'trace_id': None, 'where': {'line': 89, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'function': 'load_alarms'}, 'what': {'message': 'alarm.json が存在しません'}, 'context': {'path': 'alarm_sample.json'}, 'output': 'both'}",
+        "count": 1
+      },
+      {
+        "key": "invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '1000'}, 'output': 'both'}",
+        "count": 1
+      },
+      {
+        "key": "invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '9999'}, 'output': 'both'}",
+        "count": 1
+      }
+    ],
+    "context_numeric_stats": {
+      "current_boot_time": {
+        "field": "context.current_boot_time",
+        "count": 4,
+        "minimum": 1776590665.2793486,
+        "maximum": 1776590665.2794566,
+        "average": 1776590665.2793756,
+        "median": 1776590665.2793489
+      },
+      "previous_boot_time": {
+        "field": "context.previous_boot_time",
+        "count": 4,
+        "minimum": 1776589665.2793486,
+        "maximum": 1776589665.2794566,
+        "average": 1776589665.2793756,
+        "median": 1776589665.2793489
+      }
+    },
+    "insights": [
+      "WARNING が 11 件あります。"
+    ],
+    "text": "検索条件\n  条件: level:WARNING\n  件数: 11\n\nレベル別件数\n  - WARNING: 11\n\nモジュール上位\n  - D:\\PC\\Python\\alarm\\logs\\system_monitor.py: 4\n  - D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py: 4\n  - D:\\PC\\Python\\alarm\\logs\\log_validator.py: 3\n\nメッセージ上位\n  - system_reboot_detected: 4\n  - test_warning: 4\n  - invalid log: missing trace_id → {'level': 'INFO', 'time': '2026-03-22T17:23:49', 'trace_id': None, 'where': {'line': 89, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_storage.py', 'function': 'load_alarms'}, 'what': {'message': 'alarm.json が存在しません'}, 'context': {'path': 'alarm_sample.json'}, 'output': 'both'}: 1\n  - invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '1000'}, 'output': 'both'}: 1\n  - invalid log: missing trace_id → {'level': 'WARNING', 'time': '2026-03-22T17:23:50', 'trace_id': None, 'where': {'line': 259, 'module': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'file': 'd:\\\\PC\\\\Python\\\\alarm\\\\alarm_manager_temp.py', 'function': '_recalc_states'}, 'what': {'message': 'State not found, created new state'}, 'context': {'alarm_id': '9999'}, 'output': 'both'}: 1\n\n数値コンテキスト\n  - context.current_boot_time\n      件数: 4\n      平均: 1.77659e+09\n      最小: 1.77659e+09\n      最大: 1.77659e+09\n      中央値: 1.77659e+09\n  - context.previous_boot_time\n      件数: 4\n      平均: 1.77659e+09\n      最小: 1.77659e+09\n      最大: 1.77659e+09\n      中央値: 1.77659e+09\n\n所見\n  - WARNING が 11 件あります。"
+  },
+  "report": null
+}

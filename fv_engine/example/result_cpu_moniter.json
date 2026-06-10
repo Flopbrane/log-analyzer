@@ -1,0 +1,18 @@
+{
+  "exported_at": "2026-06-10T05:12:00+00:00",
+  "logs": [],
+  "events": [],
+  "summary": {
+    "total_count": 0,
+    "condition_text": "message:\"system_cpu_percent\"",
+    "level_counts": {},
+    "module_ranking": [],
+    "message_ranking": [],
+    "context_numeric_stats": {},
+    "insights": [
+      "該当ログはありません。"
+    ],
+    "text": "検索条件\n  条件: message:\"system_cpu_percent\"\n  件数: 0\n\n該当ログはありません。"
+  },
+  "report": null
+}

@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import subprocess
+import sys
 import tkinter as tk
 from collections.abc import Mapping
 from datetime import datetime, timezone
@@ -19,6 +21,11 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, TypeGuard, cast
 
+from fv_engine.fv_interpreter import build_execution_plan
+from fv_engine.fv_parser import parse_fv_text
+from fv_engine.fv_plan import ExecutionPlan
+from fv_engine.fv_runner import run_execution_plan
+from fv_engine.fv_types import FVRecipe, FVResult
 from logs.display_formatter import LogRenderer
 from logs.language_selector import LanguageCode, build_timezone_label, normalize_language, translate, translate_timezone_area
 from logs.log_app import get_logger
@@ -595,45 +602,56 @@ class LogViewer:
         self.type_dropdown.pack(side=tk.LEFT, padx=(4, 12))
         self.type_dropdown.bind("<<ComboboxSelected>>", self.apply_filter)
 
+        # 検索窓と検索ボタン
         self.search_label = tk.Label(filter_frame, text=self._t("label_search"))
         self.search_label.pack(side=tk.LEFT)
-        tk.Entry(
+        # Enterキーで検索実行
+        self.search_entry = tk.Entry(
             filter_frame,
             textvariable=self.search_var,
             width=30,
-        ).pack(side=tk.LEFT, padx=(4, 12))
+        )
+        self.search_entry.pack(
+            side=tk.LEFT,
+            padx=(4, 12),
+        )
+        self.search_entry.bind(
+            "<Return>",
+            lambda _event: self.apply_filter(),
+        )
 
+        # 検索ボタンで検索実行
         self.search_button = tk.Button(filter_frame, text=self._t("button_search"), command=self.apply_filter)
         self.search_button.pack(side=tk.LEFT)
-
+        # 要約ボタン
         self.summary_button = tk.Button(
             filter_frame,
             text=self._t("button_summary"),
             command=self.open_summary_window,
         )
         self.summary_button.pack(side=tk.LEFT, padx=(8, 0))
-
+        # エクスポートボタン
         self.export_csv_button = tk.Button(
             filter_frame,
             text=self._t("button_export_result_csv"),
             command=self.export_filtered_events_csv,
         )
         self.export_csv_button.pack(side=tk.LEFT, padx=(8, 0))
-
+        # JSONエクスポート
         self.export_json_button = tk.Button(
             filter_frame,
             text=self._t("button_export_result_json"),
             command=self.export_filtered_bundle_json,
         )
         self.export_json_button.pack(side=tk.LEFT, padx=(8, 0))
-
+        # 調査レポートエクスポート
         self.export_report_button = tk.Button(
             filter_frame,
             text=self._t("button_export_report"),
             command=self.export_investigation_report,
         )
         self.export_report_button.pack(side=tk.LEFT, padx=(8, 0))
-
+        # 集計結果表示用ラベル
         tk.Label(
             filter_frame,
             textvariable=self.aggregate_result_var,
@@ -729,26 +747,100 @@ class LogViewer:
             font=self.font_normal,
             background="#efebe9",
         )
+        # 初期フォーカスを検索窓へ
+        self.search_entry.focus_set()
 
         self.tree.bind("<ButtonRelease-1>", self.on_click)
         self.tree.bind("<Double-1>", self.on_double_click)
 
+
+    def open_fv_recipe(self) -> None:
+        """FVレシピを読み込む。"""
+
+        file_path_str: str = filedialog.askopenfilename(
+            title=self._t("dialog_select_fv_recipe"),
+            initialdir=str(self.log_dir),
+            filetypes=[
+                ("FV Recipe", "*.fv"),
+                ("Markdown", "*.md"),
+                ("All Files", "*.*"),
+            ],
+        )
+
+        if not file_path_str:
+            return
+
+        recipe_path: Path = Path(file_path_str)
+
+        if not recipe_path.exists():
+            messagebox.showerror(
+                self._t("fv_recipe_not_found_title"),
+                self._t("fv_recipe_not_found_message").format(path=recipe_path),
+            )
+            return
+
+        try:
+            recipe_text: str = recipe_path.read_text(encoding="utf-8")
+
+            recipe: FVRecipe = parse_fv_text(recipe_text)
+
+            execution_plan: ExecutionPlan = build_execution_plan(recipe)
+
+            self.search_var.set(execution_plan.query)
+            self.apply_filter()
+
+            messagebox.showinfo(
+                "FV Recipe Loaded",
+                (f"TITLE : {recipe.title}\n\n" f"QUERY :\n{recipe.query}\n\n" f"SUMMARY : {recipe.summary.value}\n" f"EXPORT : {recipe.export.value}"),
+            )
+            print(f"DEBUG execution_plan: {execution_plan}")
+            
+            result: FVResult = run_execution_plan(
+            execution_plan,
+            self.raw_rows,
+            timezone=self.current_tz,
+            )
+
+            print(f"DEBUG fv_result: {result}")
+
+        except Exception as e:
+            messagebox.showerror(
+                self._t("fv_recipe_open_error_title"),
+                str(e),
+            )
+
+    def _open_external_file(self, file_path: Path) -> None:
+        """OSの関連付けでファイルを開く。"""
+        if os.name == "nt":
+            os.startfile(file_path)  # type: ignore[attr-defined]
+            return
+
+        opener: str = "open" if sys.platform == "darwin" else "xdg-open"
+        if subprocess.run([opener, str(file_path)], check=False).returncode != 0:
+            raise RuntimeError(f"Failed to open {file_path}")
+
     def _build_menu(self) -> None:
         """メインメニューを構築する。"""
         menu_bar = tk.Menu(self.root)
+        file_menu = tk.Menu(menu_bar, tearoff=False)
+        file_menu.add_command(label=self._t("menu_open_log"), command=self.open_log_file)
+        file_menu.add_command(label=self._t("menu_open_multiple_logs"), command=self.open_logs)
+        file_menu.add_command(label=self._t("menu_open_fv_recipe"), command=self.open_fv_recipe)
+        file_menu.add_separator()
+        file_menu.add_command(label=self._t("menu_exit"), command=self.exit_app)
+
         app_menu = tk.Menu(menu_bar, tearoff=False)
         app_menu.add_command(
             label=self._t("menu_register_api_key"),
             command=self.open_openai_api_key_dialog,
         )
         app_menu.add_command(label=self._t("menu_options"), command=self.open_options_dialog)
-        app_menu.add_separator()
-        app_menu.add_command(label=self._t("menu_exit"), command=self.exit_app)
 
         language_menu = tk.Menu(menu_bar, tearoff=False)
         language_menu.add_command(label=self._t("language_japanese"), command=lambda: self.set_language("ja"))
         language_menu.add_command(label=self._t("language_english"), command=lambda: self.set_language("en"))
 
+        menu_bar.add_cascade(label=self._t("menu_file"), menu=file_menu)
         menu_bar.add_cascade(label=self._t("menu_app"), menu=app_menu)
         menu_bar.add_cascade(label=self._t("menu_language"), menu=language_menu)
         self.root.config(menu=menu_bar)

@@ -238,6 +238,12 @@ class AppLogger:
         # context
         # -----------------------------
         """contextをctx()で正規化する（内部使用）"""
+        # TODO:
+        # 現在は multi_info_logger._build_log_record() が
+        # plain context を ctx() で type/value 形式へ変換している。
+        # B案(plain context保存)へ移行する場合は、
+        # multi_info_logger.py / display_formatter.py / log_viewer.py を
+        # 同時に修正すること。
         resolved_context: dict[str, Any]
 
         if context is None:

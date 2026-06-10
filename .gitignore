@@ -19,6 +19,7 @@ env/
 # runtime logs
 logs/*.jsonl
 logs/*.log
+
 # =========================
 # 🧪 テスト・一時ファイル
 # =========================
@@ -27,6 +28,9 @@ logs/*.log
 *.bak
 _tzinfo_data/
 analysis_out/
+*.fv
+fv_example/
+fv_example/*.json
 # =========================
 # 🖥️ VSCode / 開発環境
 # =========================

@@ -3,8 +3,8 @@
     "timezone_area": "Asia",
     "timezone_city": "Tokyo",
     "timezone": "Asia/Tokyo",
-    "window_geometry": "1200x650+100+100",
+    "window_geometry": "1307x650+100+100",
     "last_log_paths": [
-        "D:\\PC\\Python\\logger_project\\extra_sample_file\\sample_production_logs_3000.jsonl"
+        "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-06-10.jsonl"
     ]
 }

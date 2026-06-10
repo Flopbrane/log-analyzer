@@ -1,0 +1,1800 @@
+{
+  "exported_at": "2026-06-10T01:33:46+00:00",
+  "logs": [
+    {
+      "level": "INFO",
+      "time": "2026-04-23T05:49:41+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 87,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T05:49:43+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 87,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 12.6
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T05:49:44+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 87,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 3.4
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T05:49:45+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 87,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 6.1
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T05:49:46+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 87,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 5.7
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 8.0,
+        "gpu_mem_used_mb": 1977.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:34+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 15.1
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:34+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 18.0,
+        "gpu_mem_used_mb": 2009.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:35+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 4.2
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:35+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 19.0,
+        "gpu_mem_used_mb": 2008.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:36+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 15.8
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:37+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 4.6
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-23T06:00:37+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 18.0,
+        "gpu_mem_used_mb": 1998.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 1.0,
+        "gpu_mem_used_mb": 1924.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:49+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 7.9
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:50+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 11.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:50+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 7.0,
+        "gpu_mem_used_mb": 1924.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:51+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 4.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:51+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 3.0,
+        "gpu_mem_used_mb": 1924.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:52+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 3.8
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:52+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 3.0,
+        "gpu_mem_used_mb": 1921.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:53+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 3.6
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:15:53+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 1.0,
+        "gpu_mem_used_mb": 1919.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 3.0,
+        "gpu_mem_used_mb": 1917.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 0.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:34+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 11.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:35+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 8.4
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:36+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 6.6
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:36+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 20.0,
+        "gpu_mem_used_mb": 1927.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:38+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 5.3
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:38+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 113,
+        "function": "_log_gpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_gpu_status"
+      },
+      "context": {
+        "gpu_util_percent": 13.0,
+        "gpu_mem_used_mb": 1926.0,
+        "gpu_mem_total_mb": 8192.0
+      },
+      "output": "both"
+    },
+    {
+      "level": "INFO",
+      "time": "2026-04-24T01:16:39+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "line": 88,
+        "function": "_log_cpu",
+        "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+      },
+      "what": {
+        "message": "system_cpu_percent"
+      },
+      "context": {
+        "cpu_percent": 6.4
+      },
+      "output": "both"
+    }
+  ],
+  "events": [
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T05:49:41+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T05:49:41+00:00",
+        "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 87,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T05:49:43+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T05:49:43+00:00",
+        "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 87,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 12.6
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T05:49:44+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T05:49:44+00:00",
+        "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 87,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 3.4
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T05:49:45+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T05:49:45+00:00",
+        "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 87,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 6.1
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T05:49:46+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T05:49:46+00:00",
+        "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 87,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 5.7
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:31+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:31+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 8.0,
+          "gpu_mem_used_mb": 1977.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": "trace_jump",
+      "level": "INFO",
+      "time": "2026-04-23T06:00:31+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "trace_id changed",
+      "data": {
+        "from": "230b4afdc5cc47349267e9ab954c1a05",
+        "to": "be25593d5c454519b57d1a7727b8117d"
+      },
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:31+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:34+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:34+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 15.1
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:34+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:34+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 18.0,
+          "gpu_mem_used_mb": 2009.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:35+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:35+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 4.2
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:35+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:35+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 19.0,
+          "gpu_mem_used_mb": 2008.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:36+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:36+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 15.8
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:37+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:37+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 4.6
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-23T06:00:37+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-23T06:00:37+00:00",
+        "trace_id": "be25593d5c454519b57d1a7727b8117d",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 18.0,
+          "gpu_mem_used_mb": 1998.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:48+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:48+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 1.0,
+          "gpu_mem_used_mb": 1924.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": "trace_jump",
+      "level": "INFO",
+      "time": "2026-04-24T01:15:48+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "trace_id changed",
+      "data": {
+        "from": "be25593d5c454519b57d1a7727b8117d",
+        "to": "5a7f3844133d4ab1ba7af525a144e330"
+      },
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:48+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:49+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:49+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 7.9
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:50+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:50+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 11.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:50+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:50+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 7.0,
+          "gpu_mem_used_mb": 1924.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:51+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:51+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 4.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:51+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:51+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 3.0,
+          "gpu_mem_used_mb": 1924.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:52+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:52+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 3.8
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:52+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:52+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 3.0,
+          "gpu_mem_used_mb": 1921.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:53+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:53+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 3.6
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:15:53+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:15:53+00:00",
+        "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 1.0,
+          "gpu_mem_used_mb": 1919.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:33+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:33+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 3.0,
+          "gpu_mem_used_mb": 1917.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": "trace_jump",
+      "level": "INFO",
+      "time": "2026-04-24T01:16:33+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "trace_id changed",
+      "data": {
+        "from": "5a7f3844133d4ab1ba7af525a144e330",
+        "to": "e3401785f2db4a18821d95f2fd7a2b2f"
+      },
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:33+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 0.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:34+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:34+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 11.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:35+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:35+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 8.4
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:36+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:36+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 6.6
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:36+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:36+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 20.0,
+          "gpu_mem_used_mb": 1927.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:38+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:38+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 5.3
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:38+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_gpu_status",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:38+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 113,
+          "function": "_log_gpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_gpu_status"
+        },
+        "context": {
+          "gpu_util_percent": 13.0,
+          "gpu_mem_used_mb": 1926.0,
+          "gpu_mem_total_mb": 8192.0
+        },
+        "output": "both"
+      }
+    },
+    {
+      "type": null,
+      "level": "INFO",
+      "time": "2026-04-24T01:16:39+00:00",
+      "detected_at": "2026-06-10T01:31:32+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "message": "system_cpu_percent",
+      "data": {},
+      "raw": {
+        "level": "INFO",
+        "time": "2026-04-24T01:16:39+00:00",
+        "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+        "where": {
+          "file": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+          "line": 88,
+          "function": "_log_cpu",
+          "module": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py"
+        },
+        "what": {
+          "message": "system_cpu_percent"
+        },
+        "context": {
+          "cpu_percent": 6.4
+        },
+        "output": "both"
+      }
+    }
+  ],
+  "summary": {
+    "total_count": 37,
+    "condition_text": "cpu <=20",
+    "level_counts": {
+      "INFO": 37
+    },
+    "module_ranking": [
+      {
+        "key": "D:\\PC\\Python\\alarm\\logs\\system_monitor.py",
+        "count": 37
+      }
+    ],
+    "message_ranking": [
+      {
+        "key": "system_cpu_percent",
+        "count": 25
+      },
+      {
+        "key": "system_gpu_status",
+        "count": 12
+      }
+    ],
+    "context_numeric_stats": {
+      "cpu_percent": {
+        "field": "context.cpu_percent",
+        "count": 25,
+        "minimum": 0.0,
+        "maximum": 15.8,
+        "average": 5.42,
+        "median": 4.6
+      },
+      "gpu_mem_total_mb": {
+        "field": "context.gpu_mem_total_mb",
+        "count": 12,
+        "minimum": 8192.0,
+        "maximum": 8192.0,
+        "average": 8192.0,
+        "median": 8192.0
+      },
+      "gpu_mem_used_mb": {
+        "field": "context.gpu_mem_used_mb",
+        "count": 12,
+        "minimum": 1917.0,
+        "maximum": 2009.0,
+        "average": 1947.8333333333333,
+        "median": 1925.0
+      },
+      "gpu_util_percent": {
+        "field": "context.gpu_util_percent",
+        "count": 12,
+        "minimum": 1.0,
+        "maximum": 20.0,
+        "average": 9.5,
+        "median": 7.5
+      }
+    },
+    "insights": [
+      "重大レベルのログは目立ちません。"
+    ],
+    "text": "検索条件\n  条件: cpu <=20\n  件数: 37\n\nレベル別件数\n  - INFO: 37\n\nモジュール上位\n  - D:\\PC\\Python\\alarm\\logs\\system_monitor.py: 37\n\nメッセージ上位\n  - system_cpu_percent: 25\n  - system_gpu_status: 12\n\n数値コンテキスト\n  - context.cpu_percent\n      件数: 25\n      平均: 5.42\n      最小: 0\n      最大: 15.8\n      中央値: 4.6\n  - context.gpu_mem_total_mb\n      件数: 12\n      平均: 8192\n      最小: 8192\n      最大: 8192\n      中央値: 8192\n  - context.gpu_mem_used_mb\n      件数: 12\n      平均: 1947.83\n      最小: 1917\n      最大: 2009\n      中央値: 1925\n\n所見\n  - 重大レベルのログは目立ちません。"
+  },
+  "report": {
+    "kind": "investigation_report",
+    "condition_text": "cpu <=20",
+    "timezone": "Asia/Tokyo",
+    "source_files": [
+      "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-04-22.jsonl",
+      "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-04-23.jsonl",
+      "D:\\PC\\Python\\logger_project\\logs\\alarm_2026-04-24.jsonl"
+    ]
+  }
+}

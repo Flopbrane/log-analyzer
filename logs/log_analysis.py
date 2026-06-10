@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from logs.log_normalizer import LogType, detect_log_type, normalize_external_log, normalize_log_record
 
-__all__ = [
+__all__: list[str] = [
     "LogType",
     "detect_log_type",
     "normalize_external_log",

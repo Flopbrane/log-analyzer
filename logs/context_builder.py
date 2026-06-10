@@ -19,6 +19,9 @@ from typing import Any, TypeAlias
 from logs.context_types import CUSTOM_TYPES, ContextType
 
 ContextDict: TypeAlias = dict[str, Any]
+# TODO:
+# 旧A案(type/value形式)との互換用。
+# B案(plain context)へ完全移行できたら削除候補。
 WrappedContextValue: TypeAlias = dict[str, Any]
 WrappedContextDict: TypeAlias = dict[str, WrappedContextValue]
 
