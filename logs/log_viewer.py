@@ -24,6 +24,7 @@ from typing import Any, Final, TypeGuard, cast
 from fv_engine.fv_interpreter import build_execution_plan
 from fv_engine.fv_parser import parse_fv_text
 from fv_engine.fv_plan import ExecutionPlan
+from fv_engine.fv_result import format_fv_result
 from fv_engine.fv_runner import run_execution_plan
 from fv_engine.fv_types import FVRecipe, FVResult
 from logs.display_formatter import LogRenderer
@@ -796,11 +797,12 @@ class LogViewer:
             print(f"DEBUG execution_plan: {execution_plan}")
             
             result: FVResult = run_execution_plan(
-            execution_plan,
-            self.raw_rows,
-            timezone=self.current_tz,
+                execution_plan,
+                self.raw_rows,
+                timezone=self.current_tz,
             )
 
+            self.aggregate_result_var.set(format_fv_result(result))
             print(f"DEBUG fv_result: {result}")
 
         except Exception as e:
