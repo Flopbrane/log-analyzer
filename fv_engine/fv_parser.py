@@ -79,12 +79,18 @@ def parse_fv_lines(lines: Iterable[str]) -> FVRecipe:
     if not query:
         raise ValueError("QUERY は必須です。")
 
-    summary_text: str = _optional_single_text(sections["SUMMARY"], "SUMMARY", FVSummaryMode.ON.value)
+    summary_text: str = _optional_single_text(
+        sections["SUMMARY"],
+        "SUMMARY",
+        FVSummaryMode.ON.value)
     summary_value: str = summary_text.upper()
     if summary_value not in FV_SUMMARY_VALUES:
         raise ValueError(f"SUMMARY は ON または OFF を指定してください: {summary_text}")
 
-    export_text: str = _optional_single_text(sections["EXPORT"], "EXPORT", FVExportFormat.NONE.value)
+    export_text: str = _optional_single_text(
+        sections["EXPORT"],
+        "EXPORT",
+        FVExportFormat.NONE.value)
     export_value: str = export_text.upper()
     if export_value not in FV_EXPORT_VALUES:
         raise ValueError(f"EXPORT は CSV、JSON、NONE のいずれかを指定してください: {export_text}")
@@ -118,10 +124,19 @@ def _single_text(values: list[str], section: str) -> str:
     return text
 
 
-def _optional_single_text(values: list[str], section: str, default: str) -> str:
-    meaningful_values: list[str] = [value.strip() for value in values if value.strip()]
+def _optional_single_text(
+    values: list[str],
+    section: str,
+    default: str) -> str:
+    meaningful_values: list[str] = [
+        value.strip()
+        for value in values
+        if value.strip()]
+
     if not meaningful_values:
         return default
+
     if len(meaningful_values) > 1:
         raise ValueError(f"{section} は1行で指定してください。")
+
     return meaningful_values[0]

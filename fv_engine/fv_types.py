@@ -72,4 +72,3 @@ class FVResult:
     matched_count: int
     summary: SummaryResult | None
     export_file_path: Path | None
-

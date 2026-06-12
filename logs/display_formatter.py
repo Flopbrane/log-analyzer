@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=W0718
+# pylint: disable=W0718,C0301
 """表示整形のモジュール"""
 #########################
 # Author: F.Kurokawa
@@ -133,7 +133,7 @@ class LogRenderer:
             if isinstance(v, dict) and "type" in v and "value" in v:
                 v_typed: ContextValue = cast(ContextValue, v)
 
-                v_type: ContextType | str = v_typed["type"]
+                v_type: ContextType = cast(ContextType, v_typed["type"])
                 v_value: Any = v_typed["value"]
 
                 # 🔹 datetime
@@ -227,11 +227,11 @@ class LogRenderer:
         color: str = self.get_level_color(level)
 
         where: LogWhere = raw.get("where", {})
-        
+
         time_utc_line: str
         time_local_line: str
         time_local_line, time_utc_line = self.format_time_full(row.time, tz)
-        
+
         parts: list[tuple[str, str]] = [
             (f"Type  : {row.type.name if row.type else '-'}", color),
             (f"Level : {level}", color),
@@ -281,6 +281,7 @@ class LogRenderer:
     # 🔹 Summary生成🔥
     # =========================
     def build_summary(self, row: Event, tz: str) -> str:
+        """Summary整形（表示用テキスト生成）"""
         parts: list[tuple[str, str]] = self.build_summary_parts(row, tz)
         return "\n".join(text for text, _ in parts)
 

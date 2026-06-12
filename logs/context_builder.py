@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """contextの情報を構築するヘルパー関数群"""
-
+# pylint: disable=W0511
 #########################
 # Author: F.Kurokawa
 # Description:
@@ -26,6 +26,19 @@ WrappedContextValue: TypeAlias = dict[str, Any]
 WrappedContextDict: TypeAlias = dict[str, WrappedContextValue]
 
 
+# =================================
+# context構築の基本関数(読み込んだ値によって型を決める:B案)
+# =================================
+def plain_context(**kwargs: Any) -> ContextDict:
+    """type/valueを付けない普通のcontextを作る。"""
+    return dict(kwargs)
+
+
+
+# =================================
+# context構築の基本関数(全ての値にtype/valueを付ける:A案)
+# 今後使用しないようにしていく。新しいcontextはplain_contextで作ること。
+# =================================
 def detect_context_type(value: Any) -> ContextType:
     """値からContextTypeを推定する。"""
     if value is None:
@@ -50,16 +63,9 @@ def detect_context_type(value: Any) -> ContextType:
     CUSTOM_TYPES.add(type(value).__name__)
     return ContextType.ANY
 
-
 def ctx(**kwargs: Any) -> WrappedContextDict:
     """Logger保存用のtype/value付きcontextを作る。"""
     return wrap_context(kwargs)
-
-
-def plain_context(**kwargs: Any) -> ContextDict:
-    """type/valueを付けない普通のcontextを作る。"""
-    return dict(kwargs)
-
 
 def wrap_context_value(value: Any) -> WrappedContextValue:
     """値を表示・分析用のContext形式に変換する。"""
@@ -73,11 +79,9 @@ def wrap_context_value(value: Any) -> WrappedContextValue:
         "value": value,
     }
 
-
 def wrap_context(context: Mapping[str, Any]) -> WrappedContextDict:
     """普通のcontextを、type/value付きcontextへ変換する。"""
     return {key: wrap_context_value(value) for key, value in context.items()}
-
 
 def get_caller_context(depth: int = 2) -> ContextDict:
     """呼び出し元のmodule/class/function/file_path/line_noを取得する。"""
@@ -112,8 +116,9 @@ def get_caller_context(depth: int = 2) -> ContextDict:
         "line_no": frame.f_lineno,
     }
 
+
 # =================================
-# 便利なcontext構築関数群
+# 便利なcontext構築関数群(B案: plain context対応)
 # =================================
 def context_for_program(
     state: str,

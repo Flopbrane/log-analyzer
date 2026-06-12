@@ -13,7 +13,7 @@ from tkinter import ttk
 
 
 class LogFileSelector:
-
+    """複数のログファイルを選択するためのGUIクラス"""
     def __init__(
         self,
         parent: tk.Misc,
@@ -58,7 +58,7 @@ class LogFileSelector:
 
         scrollbar = tk.Scrollbar(self.window, orient="vertical")
         scrollbar.pack(side="right", fill="y")
-        
+
         # ログファイルのリストを表示する
         # 🔹 Treeview
         self.tree = ttk.Treeview(
@@ -102,8 +102,8 @@ class LogFileSelector:
         """
         self.window.wait_window()
         return self.result
-    
-    
+
+
     def _on_ok(self) -> None:
         """OKボタンが押されたときの処理"""
         selected_items: tuple[str, ...] = self.tree.selection()

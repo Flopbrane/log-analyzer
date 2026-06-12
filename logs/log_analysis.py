@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0301
 """ログ構造の判定入口。
 
 正規化処理の本体はlog_normalizer.pyに置く。

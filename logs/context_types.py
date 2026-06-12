@@ -17,6 +17,7 @@ CUSTOM_TYPES: set[str] = set()
 ContextValue: TypeAlias = Mapping[str, object]
 
 class ContextType(str, Enum):
+    """コンテキストの値の型定義"""
     DATETIME = "datetime"
     INT = "int"
     STR = "str"
@@ -29,9 +30,11 @@ class ContextType(str, Enum):
 
 
 class TypedContextValue(TypedDict):
+    """型付きコンテキスト値"""
     type: str
     value: object
 
 
 def is_custom_type(type_name: str) -> bool:
+    """カスタム型かどうかを判定する"""
     return type_name in CUSTOM_TYPES

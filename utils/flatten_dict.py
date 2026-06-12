@@ -12,9 +12,9 @@ from typing import Any, cast
 
 __all__: list[str] = [
     "flatten_dict",
+    "unflatten_dict",
+    "flatten_list",
 ]
-
-
 
 
 def flatten_dict(
@@ -49,7 +49,6 @@ def flatten_dict(
                 Mapping[str, Any],
                 value,
             )
-
             result.update(
                 flatten_dict(
                     child,
@@ -60,6 +59,37 @@ def flatten_dict(
             result[new_key] = flatten_list(cast(list[Any], value))
         else:
             result[new_key] = value
+
+    return result
+
+
+def unflatten_dict(
+    data: Mapping[str, Any],
+) -> dict[str, Any]:
+    """ドット区切りのフラットな辞書からネストした辞書へ戻す。
+    例:
+    {
+        "what.message": "error"
+    }
+    ↓
+    {
+        "what": {
+            "message": "error"
+        }
+    }
+    """
+    result: dict[str, Any] = {}
+
+    for key, value in data.items():
+        parts: list[str] = key.split(".")
+        current: dict[str, Any] = result
+
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = cast(dict[str, Any], current[part])
+
+        current[parts[-1]] = value
 
     return result
 
@@ -97,9 +127,17 @@ def flatten_list(
 
     for value in values:
         if isinstance(value, list):
-            result.extend(flatten_list(cast(list[Any], value)))
+            result.extend(
+                flatten_list(
+                    cast(list[Any], value)
+                    )
+                )
         elif isinstance(value, Mapping):
-            result.extend(flatten_dict(cast(Mapping[str, Any], value)).values())
+            result.append(
+                flatten_dict(
+                    cast(Mapping[str, Any], value)
+                    )
+                )
         else:
             result.append(value)
 

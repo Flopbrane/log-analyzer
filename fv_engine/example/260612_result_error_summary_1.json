@@ -1,0 +1,112 @@
+{
+  "exported_at": "2026-06-12T01:54:25+00:00",
+  "logs": [
+    {
+      "level": "ERROR",
+      "time": "2026-04-23T05:49:46+00:00",
+      "trace_id": "230b4afdc5cc47349267e9ab954c1a05",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 39,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_error"
+      },
+      "context": {
+        "test": true
+      },
+      "output": "both"
+    },
+    {
+      "level": "ERROR",
+      "time": "2026-04-23T06:00:37+00:00",
+      "trace_id": "be25593d5c454519b57d1a7727b8117d",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 39,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_error"
+      },
+      "context": {
+        "test": true
+      },
+      "output": "both"
+    },
+    {
+      "level": "ERROR",
+      "time": "2026-04-24T01:15:53+00:00",
+      "trace_id": "5a7f3844133d4ab1ba7af525a144e330",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 39,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_error"
+      },
+      "context": {
+        "test": true
+      },
+      "output": "both"
+    },
+    {
+      "level": "ERROR",
+      "time": "2026-04-24T01:16:39+00:00",
+      "trace_id": "e3401785f2db4a18821d95f2fd7a2b2f",
+      "where": {
+        "file": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "line": 39,
+        "function": "run_test",
+        "module": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py"
+      },
+      "what": {
+        "message": "test_error"
+      },
+      "context": {
+        "test": true
+      },
+      "output": "both"
+    }
+  ],
+  "events": [],
+  "summary": {
+    "total_count": 4,
+    "condition_text": "level:ERROR",
+    "level_counts": {
+      "ERROR": 4
+    },
+    "module_ranking": [
+      {
+        "key": "D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py",
+        "count": 4
+      }
+    ],
+    "message_ranking": [
+      {
+        "key": "test_error",
+        "count": 4
+      }
+    ],
+    "context_numeric_stats": {
+      "test": {
+        "field": "context.test",
+        "count": 4,
+        "minimum": 1.0,
+        "maximum": 1.0,
+        "average": 1.0,
+        "median": 1.0
+      }
+    },
+    "insights": [
+      "ERROR/CRITICAL が 4 件あります。"
+    ],
+    "text": "検索条件\n  条件: level:ERROR\n  件数: 4\n\nレベル別件数\n  - ERROR: 4\n\nモジュール上位\n  - D:\\PC\\Python\\alarm\\logs\\tester\\test_run_logger.py: 4\n\nメッセージ上位\n  - test_error: 4\n\n数値コンテキスト\n  - context.test\n      件数: 4\n      平均: 1\n      最小: 1\n      最大: 1\n      中央値: 1\n\n所見\n  - ERROR/CRITICAL が 4 件あります。"
+  },
+  "report": null
+}

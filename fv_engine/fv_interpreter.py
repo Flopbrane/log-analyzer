@@ -42,7 +42,6 @@ def build_execution_plan(
     execution_id: str | None = None,
 ) -> ExecutionPlan:
     """FVRecipeから実行計画を生成する。"""
-    print(f"Interpreting recipe: {recipe}")
     return ExecutionPlan(
         recipe=recipe,
         source=source,

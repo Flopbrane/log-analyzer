@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=W0511,C0301
 #########################
 # Author: F.Kurokawa
 # Description:
@@ -236,14 +237,28 @@ class AppLogger:
         """ログレコードを構築する（内部使用）"""
         # -----------------------------
         # context
-        # -----------------------------
-        """contextをctx()で正規化する（内部使用）"""
+        # contextをctx()で正規化する（内部使用）
         # TODO:
-        # 現在は multi_info_logger._build_log_record() が
-        # plain context を ctx() で type/value 形式へ変換している。
-        # B案(plain context保存)へ移行する場合は、
-        # multi_info_logger.py / display_formatter.py / log_viewer.py を
-        # 同時に修正すること。
+        # 現在は plain context を保存前に
+        # ctx() で type/value 形式へ変換している。
+        #
+        # 保存形式(A案):
+        # {
+        #     "cpu_percent": {
+        #         "type": "float",
+        #         "value": 12.3,
+        #     }
+        # }
+        #
+        # B案へ移行する場合は、
+        # multi_info_logger.py
+        # display_formatter.py
+        # log_viewer.py
+        # context_builder.py
+        # を同時に見直すこと。
+        #
+        # QueryEngine / FV Engine / Summary Engine は
+        # plain context を扱う方向で検討中。
         resolved_context: dict[str, Any]
 
         if context is None:

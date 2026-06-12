@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=W0718
+# pylint: disable=W0718,C0301,C0302
+# ruff: noqa: E501
 """ログ表示GUI（安定版）"""
 #########################
 # Author: F.Kurokawa
@@ -24,7 +25,8 @@ from typing import Any, Final, TypeGuard, cast
 from fv_engine.fv_interpreter import build_execution_plan
 from fv_engine.fv_parser import parse_fv_text
 from fv_engine.fv_plan import ExecutionPlan
-from fv_engine.fv_result import format_fv_result
+
+# from fv_engine.fv_result import format_fv_result
 from fv_engine.fv_runner import run_execution_plan
 from fv_engine.fv_types import FVRecipe, FVResult
 from logs.display_formatter import LogRenderer
@@ -128,6 +130,8 @@ class LogViewer:
         self.export_report_button: tk.Button
         self.search_var = tk.StringVar()
         self.aggregate_result_var = tk.StringVar()
+        self.area_combo: ttk.Combobox
+        self.city_combo: ttk.Combobox
 
         # ===== TimeZoneデータ =====
         self.tz_data: TimeZoneData = self._build_timezone_data_with_dialog()
@@ -163,7 +167,6 @@ class LogViewer:
 
             return log_files[0] if log_files else None
 
-        
         configured_log_paths: list[Path] = self._load_log_paths_from_config()
         loaded_configured_logs = False
         if initial_log_path is None and configured_log_paths:
@@ -790,19 +793,24 @@ class LogViewer:
             self.search_var.set(execution_plan.query)
             self.apply_filter()
 
-            messagebox.showinfo(
-                "FV Recipe Loaded",
-                (f"TITLE : {recipe.title}\n\n" f"QUERY :\n{recipe.query}\n\n" f"SUMMARY : {recipe.summary.value}\n" f"EXPORT : {recipe.export.value}"),
-            )
-            print(f"DEBUG execution_plan: {execution_plan}")
-            
+            # messagebox.showinfo(
+            #     "FV Recipe Loaded",
+            #     (f"TITLE : {recipe.title}\n\n" f"QUERY :\n{recipe.query}\n\n" f"SUMMARY : {recipe.summary.value}\n" f"EXPORT : {recipe.export.value}"),
+            # )
+            # print(f"DEBUG execution_plan: {execution_plan}")
+
             result: FVResult = run_execution_plan(
                 execution_plan,
                 self.raw_rows,
                 timezone=self.current_tz,
             )
 
-            self.aggregate_result_var.set(format_fv_result(result))
+            if result.summary is not None:
+                SummaryWindow(
+                    self.root,
+                    result.summary,
+                    self.language,
+                )
             print(f"DEBUG fv_result: {result}")
 
         except Exception as e:
@@ -1045,14 +1053,14 @@ class LogViewer:
     ) -> str:
         """LogDictからtrace_id取得"""
         return row["trace_id"]
-    
+
     def _get_log_message(
         self,
         row: LogDict,
     ) -> str:
         """LogDictからmessage取得"""
         return row["what"]["message"]
-    
+
     def _get_log_type(
         self,
         row: LogDict,
@@ -1106,13 +1114,13 @@ class LogViewer:
             # 🔹 TYPEフィルタ
             if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
-            
+
             # debag用
             # print(f"search_query: {search_query}")
             # print(f"time: {row['time']}")
             # print(f"row: {row}")
             # print(f"match_search_query: {match_search_query(row, search_query, tz)}")
-            
+
             if not match_search_query(row, search_query, tz):
                 continue
 

@@ -134,7 +134,7 @@ def flatten_dict(
     """ネストしたdictをドット区切りへ展開する。"""
 
     result: dict[str, Any] = {}
-    
+
     for key, value in data.items():
         new_key: str = key if not prefix else f"{prefix}.{key}"
 
@@ -173,9 +173,14 @@ def _normalize_flat_production_log(raw: dict[str, Any]) -> dict[str, Any]:
 def _normalize_nested_json_log(raw: dict[str, Any]) -> dict[str, Any]:
     service: dict[str, Any] = _as_mapping(raw.get("service"))
     event: dict[str, Any] = _as_mapping(raw.get("event"))
-    module: Any | Literal['nested_json'] = service.get("name") or service.get("module") or "nested_json"
-    event_id: Any | None = event.get("id") or raw.get("event_id") or raw.get("id")
-    message: Any | Literal[''] = event.get("message") or raw.get("message") or ""
+    module: Any | Literal['nested_json'] = (service.get("name")
+                                            or service.get("module")
+                                            or "nested_json")
+    event_id: Any | None = (event.get("id")
+                            or raw.get("event_id")
+                            or raw.get("id"))
+    message: Any | Literal[''] = (event.get("message")
+                                  or raw.get("message") or "")
     return {
         "level": str(raw.get("severity") or raw.get("level") or "INFO").upper(),
         "time": str(raw["time"]),
