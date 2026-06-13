@@ -59,6 +59,7 @@ AGGREGATE_FUNCTION_ALIASES: dict[str, AggregateFunction] = {
 
 KNOWN_FIELD_NAMES: set[str] = {
     "level",
+    "type",
     "message",
     "msg",
     "function",

@@ -47,6 +47,7 @@ from logs.result_exporter import (
     export_summary_to_csv,
     export_to_json,
 )
+from logs.search_ast import AndNode, EmptyNode, FieldNode, NotNode, OrNode, QueryNode
 from logs.search_matcher import apply_result_modifiers, match_search_query, run_aggregate_query
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
@@ -98,6 +99,8 @@ class LogViewer:
         self.raw_rows: list[LogDict] = []
         # ----検索後ログ (filtered)----
         self.filtered_rows: list[LogDict] = []
+        # ----読み込み済みログ全体から生成した全Event----
+        self.all_display_rows: list[Event] = []
         # ----Treeview表示用Event (display)----
         self.display_rows: list[Event] = []
 
@@ -175,6 +178,7 @@ class LogViewer:
             else:
                 logs: list[LogDict] = collect_logs(configured_log_paths)
                 self.raw_rows = logs
+                self.all_display_rows = summarize(self.raw_rows)
                 self.last_log_paths = configured_log_paths
                 self.update_filters()
                 self.apply_filter()
@@ -975,6 +979,7 @@ class LogViewer:
 
         # ③ Viewerにセット
         self.raw_rows = safe_logs
+        self.all_display_rows = summarize(self.raw_rows)
 
         self.update_filters()
         self.apply_filter()
@@ -995,6 +1000,7 @@ class LogViewer:
         logs: list[LogDict] = collect_logs([Path(file_path_str)])
 
         self.raw_rows = logs
+        self.all_display_rows = summarize(self.raw_rows)
         self.last_log_paths = [Path(file_path_str)]
         self.update_filters()
         self.apply_filter()
@@ -1012,6 +1018,7 @@ class LogViewer:
 
         # 🔹 Viewerは表示だけ
         self.raw_rows = logs
+        self.all_display_rows = summarize(self.raw_rows)
         self.last_log_paths = paths
         self.update_filters()
         self.apply_filter()
@@ -1033,7 +1040,7 @@ class LogViewer:
         event_types: list[str] = sorted(
             {
                 self._get_event_display_type(event)
-                for event in summarize(self.raw_rows)
+                for event in self.all_display_rows
             }
         )
         types = sorted(set(types) | set(event_types))
@@ -1078,6 +1085,48 @@ class LogViewer:
         """TreeviewのType列に表示する種別を取得する。"""
         return row.type.name if row.type is not None else row.level.name
 
+    def _match_event_search_query(
+        self,
+        row: Event,
+        query: SearchQuery,
+        tz: str,
+    ) -> bool:
+        """表示Eventを検索条件で判定する。"""
+        if not query.raw_text.strip():
+            return True
+        if query.aggregate is not None:
+            return match_search_query(row.raw, query, tz)
+        if query.ast_root is None:
+            return match_search_query(row.raw, query, tz)
+        return self._match_event_query_node(row, query.ast_root, query, tz)
+
+    def _match_event_query_node(
+        self,
+        row: Event,
+        node: QueryNode,
+        query: SearchQuery,
+        tz: str,
+    ) -> bool:
+        """Event.type を含む検索ASTを判定する。"""
+        if isinstance(node, EmptyNode):
+            return True
+        if isinstance(node, FieldNode):
+            field: str = node.field.lower()
+            value: str = node.value.lower()
+            if field == "type":
+                return self._get_event_display_type(row).lower() == value
+            if field == "level":
+                return row.level.name.lower() == value
+        if isinstance(node, NotNode):
+            return not self._match_event_query_node(row, node.child, query, tz)
+        if isinstance(node, AndNode):
+            return self._match_event_query_node(row, node.left, query, tz) and self._match_event_query_node(row, node.right, query, tz)
+        if isinstance(node, OrNode):
+            return self._match_event_query_node(row, node.left, query, tz) or self._match_event_query_node(row, node.right, query, tz)
+
+        node_query = SearchQuery(raw_text=query.raw_text, ast_root=node)
+        return match_search_query(row.raw, node_query, tz)
+
     def _searchtext_datetime_builder(
         self,
         search_text: str,
@@ -1113,43 +1162,49 @@ class LogViewer:
         # 🔹 画面クリア
         self.tree.delete(*self.tree.get_children())
 
-        for row in self.raw_rows:
-            row_trace_id: str = self._get_log_trace_id(row)
-            row_type: str = self._get_log_type(row)
+        for event_row in self.all_display_rows:
+            row_trace_id: str = str(event_row.trace_id)
+            row_type: str = self._get_event_display_type(event_row)
 
             # 🔹 TRACEフィルタ
             if trace_filter != self.TRACE_ALL and row_trace_id != trace_filter:
                 continue
 
             # 🔹 TYPEフィルタ
-            if (
-                type_filter != self.TYPE_ALL
-                and type_filter in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "REBOOT"}
-                and row_type != type_filter
-            ):
+            if type_filter != self.TYPE_ALL and row_type != type_filter:
                 continue
 
             # debag用
             # print(f"search_query: {search_query}")
-            # print(f"time: {row['time']}")
-            # print(f"row: {row}")
-            # print(f"match_search_query: {match_search_query(row, search_query, tz)}")
+            # print(f"time: {event_row.time}")
+            # print(f"row: {event_row}")
+            # print(f"match_search_query: {self._match_event_search_query(event_row, search_query, tz)}")
 
-            if not match_search_query(row, search_query, tz):
+            if not self._match_event_search_query(event_row, search_query, tz):
                 continue
 
             # 🔹 表示
-            self.filtered_rows.append(row)
+            self.display_rows.append(event_row)
+
+        self.filtered_rows = self._display_raw_rows()
 
         # debag用
         self.logger.debug(
             "filter completed",
             context={
                 "filtered_count": len(self.filtered_rows),
+                "display_count": len(self.display_rows),
                 },
         )
 
         self.filtered_rows = apply_result_modifiers(self.filtered_rows, search_query, tz)
+        if self.filtered_rows != self._display_raw_rows():
+            filtered_ids: set[int] = {id(row) for row in self.filtered_rows}
+            self.display_rows = [
+                event
+                for event in self.display_rows
+                if id(event.raw) in filtered_ids
+            ]
 
         # debag用
         try:
@@ -1167,14 +1222,6 @@ class LogViewer:
                     "error": str(e),
                     },
                 )
-
-        self.display_rows = summarize(self.filtered_rows)
-        if type_filter != self.TYPE_ALL:
-            self.display_rows = [
-                event
-                for event in self.display_rows
-                if self._get_event_display_type(event) == type_filter
-            ]
 
         # 🔹 表示
         display_index = 0

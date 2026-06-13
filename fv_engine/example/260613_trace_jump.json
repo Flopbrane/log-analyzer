@@ -1,0 +1,18 @@
+{
+  "exported_at": "2026-06-13T07:32:25+00:00",
+  "logs": [],
+  "events": [],
+  "summary": {
+    "total_count": 0,
+    "condition_text": "type:TRACE_JUMP",
+    "level_counts": {},
+    "module_ranking": [],
+    "message_ranking": [],
+    "context_numeric_stats": {},
+    "insights": [
+      "該当ログはありません。"
+    ],
+    "text": "検索条件\n  条件: type:TRACE_JUMP\n  件数: 0\n\n該当ログはありません。"
+  },
+  "report": null
+}
