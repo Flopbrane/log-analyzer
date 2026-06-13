@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=W0718, C0301, C0303
 """LogViewerの検索テキスト解析専用モジュール。"""
 #########################
 # Author: F.Kurokawa

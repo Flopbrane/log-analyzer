@@ -28,7 +28,7 @@ from fv_engine.fv_plan import ExecutionPlan
 
 # from fv_engine.fv_result import format_fv_result
 from fv_engine.fv_runner import run_execution_plan
-from fv_engine.fv_types import FVRecipe, FVResult
+from fv_engine.fv_types import FVExportFormat, FVRecipe, FVResult
 from logs.display_formatter import LogRenderer
 from logs.language_selector import LanguageCode, build_timezone_label, normalize_language, translate, translate_timezone_area
 from logs.log_app import get_logger
@@ -805,11 +805,15 @@ class LogViewer:
             # )
             # print(f"DEBUG execution_plan: {execution_plan}")
 
-            result: FVResult = run_execution_plan(
-                execution_plan,
-                self.raw_rows,
-                timezone=self.current_tz,
-            )
+            result: FVResult
+            if self._query_uses_event_type(search_query=parse_query(execution_plan.query, self.current_tz)):
+                result = self._build_fv_result_from_display_rows(execution_plan)
+            else:
+                result = run_execution_plan(
+                    execution_plan,
+                    self.raw_rows,
+                    timezone=self.current_tz,
+                )
 
             if result.summary is not None:
                 SummaryWindow(
@@ -1126,6 +1130,65 @@ class LogViewer:
 
         node_query = SearchQuery(raw_text=query.raw_text, ast_root=node)
         return match_search_query(row.raw, node_query, tz)
+
+    def _query_uses_event_type(
+        self,
+        search_query: SearchQuery,
+    ) -> bool:
+        """検索条件がEvent.typeを参照しているか判定する。"""
+        return self._query_node_uses_event_type(search_query.ast_root)
+
+    def _query_node_uses_event_type(
+        self,
+        node: QueryNode | None,
+    ) -> bool:
+        if node is None:
+            return False
+        if isinstance(node, FieldNode):
+            return node.field.lower() == "type"
+        if isinstance(node, NotNode):
+            return self._query_node_uses_event_type(node.child)
+        if isinstance(node, AndNode | OrNode):
+            return self._query_node_uses_event_type(node.left) or self._query_node_uses_event_type(node.right)
+        return False
+
+    def _build_fv_result_from_display_rows(
+        self,
+        plan: ExecutionPlan,
+    ) -> FVResult:
+        """Event.type検索時のFVResultをViewer表示結果から生成する。"""
+        matched_events: list[Event] = list(self.display_rows)
+        matched_logs: list[LogDict] = self._display_raw_rows()
+        summary: SummaryResult | None = None
+        if plan.run_summary:
+            summary = summarize_logs_for_viewer(
+                matched_logs,
+                plan.query,
+                self.current_tz,
+            )
+
+        export_file_path: Path | None = None
+        if plan.export_format is FVExportFormat.CSV:
+            export_file_path = export_event_logs_to_csv(
+                matched_events,
+                plan.output_file_path,
+            )
+        elif plan.export_format is FVExportFormat.JSON:
+            export_file_path = export_to_json(
+                logs=matched_logs,
+                events=matched_events,
+                summary=summary,
+                save_file_path=plan.output_file_path,
+            )
+        elif plan.export_format is not FVExportFormat.NONE:
+            raise ValueError(f"未対応のEXPORT形式です: {plan.export_format}")
+
+        return FVResult(
+            recipe=plan.recipe,
+            matched_count=len(matched_events),
+            summary=summary,
+            export_file_path=export_file_path,
+        )
 
     def _searchtext_datetime_builder(
         self,
