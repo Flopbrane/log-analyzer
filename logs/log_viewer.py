@@ -98,8 +98,8 @@ class LogViewer:
         self.raw_rows: list[LogDict] = []
         # ----検索後ログ (filtered)----
         self.filtered_rows: list[LogDict] = []
-        # ----表示用Event (rows)----
-        self.event_rows: list[Event] = []
+        # ----Treeview表示用Event (display)----
+        self.display_rows: list[Event] = []
 
         # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
@@ -175,7 +175,6 @@ class LogViewer:
             else:
                 logs: list[LogDict] = collect_logs(configured_log_paths)
                 self.raw_rows = logs
-                self.event_rows = summarize(logs)
                 self.last_log_paths = configured_log_paths
                 self.update_filters()
                 self.apply_filter()
@@ -479,12 +478,13 @@ class LogViewer:
 
     def open_summary_window(self) -> None:
         """要約ウインドウを開く"""
-        if not self.filtered_rows:
+        summary_logs: list[LogDict] = self._display_raw_rows()
+        if not summary_logs:
             messagebox.showinfo(self._t("summary_no_logs_title"), self._t("summary_no_logs_message"))
             return
 
         result: SummaryResult = summarize_logs_for_viewer(
-            self.filtered_rows,
+            summary_logs,
             self.search_var.get(),
             self.current_tz,
         )
@@ -492,7 +492,7 @@ class LogViewer:
 
     def export_filtered_events_csv(self) -> None:
         """検索結果からEvent化できた有意ログをCSVへ保存する。"""
-        events: list[Event] = self._build_events(self.filtered_rows)
+        events: list[Event] = list(self.display_rows)
         if not events:
             messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
             return
@@ -507,18 +507,19 @@ class LogViewer:
 
     def export_filtered_bundle_json(self) -> None:
         """検索結果Eventと要約をJSONへ保存する。"""
-        events: list[Event] = self._build_events(self.filtered_rows)
+        events: list[Event] = list(self.display_rows)
         if not events:
             messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
             return
 
+        logs: list[LogDict] = self._display_raw_rows()
         summary: SummaryResult = summarize_logs_for_viewer(
-            [event.raw for event in events],
+            logs,
             self.search_var.get(),
             self.current_tz,
         )
         output_path: Path | None = export_to_json(
-            logs=(event.raw for event in events),
+            logs=logs,
             events=events,
             summary=summary,
         )
@@ -531,12 +532,12 @@ class LogViewer:
 
     def export_investigation_report(self) -> None:
         """検索条件・Event・要約を調査レポートJSONへ保存する。"""
-        events: list[Event] = self._build_events(self.filtered_rows)
+        events: list[Event] = list(self.display_rows)
         if not events:
             messagebox.showinfo(self._t("export_no_events_title"), self._t("export_no_events_message"))
             return
 
-        logs: list[LogDict] = [event.raw for event in events]
+        logs: list[LogDict] = self._display_raw_rows()
         summary: SummaryResult = summarize_logs_for_viewer(
             logs,
             self.search_var.get(),
@@ -583,7 +584,7 @@ class LogViewer:
         # =========================
         filter_frame = tk.Frame(self.root)
         filter_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
-
+        # trace_idのドロップダウン
         self.trace_label = tk.Label(filter_frame, text=self._t("label_trace"))
         self.trace_label.pack(side=tk.LEFT)
         self.trace_dropdown = ttk.Combobox(
@@ -594,7 +595,7 @@ class LogViewer:
         )
         self.trace_dropdown.pack(side=tk.LEFT, padx=(4, 12))
         self.trace_dropdown.bind("<<ComboboxSelected>>", self.apply_filter)
-
+        # typeのドロップダウン
         self.type_label = tk.Label(filter_frame, text=self._t("label_type"))
         self.type_label.pack(side=tk.LEFT)
         self.type_dropdown = ttk.Combobox(
@@ -627,6 +628,7 @@ class LogViewer:
         # 検索ボタンで検索実行
         self.search_button = tk.Button(filter_frame, text=self._t("button_search"), command=self.apply_filter)
         self.search_button.pack(side=tk.LEFT)
+
         # 要約ボタン
         self.summary_button = tk.Button(
             filter_frame,
@@ -971,12 +973,8 @@ class LogViewer:
             if log is not None:
                 safe_logs.append(log)
 
-        # Event化
-        events: list[Event] = summarize(safe_logs)
-
         # ③ Viewerにセット
         self.raw_rows = safe_logs
-        self.event_rows: list[Event] = events
 
         self.update_filters()
         self.apply_filter()
@@ -997,7 +995,6 @@ class LogViewer:
         logs: list[LogDict] = collect_logs([Path(file_path_str)])
 
         self.raw_rows = logs
-        self.event_rows = summarize(logs)
         self.last_log_paths = [Path(file_path_str)]
         self.update_filters()
         self.apply_filter()
@@ -1015,7 +1012,6 @@ class LogViewer:
 
         # 🔹 Viewerは表示だけ
         self.raw_rows = logs
-        self.event_rows = summarize(logs)
         self.last_log_paths = paths
         self.update_filters()
         self.apply_filter()
@@ -1034,6 +1030,13 @@ class LogViewer:
                 for row in self.raw_rows
             }
         )
+        event_types: list[str] = sorted(
+            {
+                self._get_event_display_type(event)
+                for event in summarize(self.raw_rows)
+            }
+        )
+        types = sorted(set(types) | set(event_types))
 
         self.trace_dropdown["values"] = [self.TRACE_ALL] + trace_ids
         self.type_dropdown["values"] = [self.TYPE_ALL] + types
@@ -1068,6 +1071,12 @@ class LogViewer:
         """LogDictからlevel取得"""
         return row["level"]
 
+    def _get_event_display_type(
+        self,
+        row: Event,
+    ) -> str:
+        """TreeviewのType列に表示する種別を取得する。"""
+        return row.type.name if row.type is not None else row.level.name
 
     def _searchtext_datetime_builder(
         self,
@@ -1088,6 +1097,7 @@ class LogViewer:
         search_query: SearchQuery = parse_query(search_text, tz)
         self.aggregate_result_var.set("")
         self.filtered_rows = []
+        self.display_rows = []
 
         # debag用
         self.logger.debug(
@@ -1096,7 +1106,7 @@ class LogViewer:
                 "start_time": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "search": search_text,
                 "raw_rows": len(self.raw_rows),
-                "event_rows": len(self.event_rows),
+                "display_rows": len(self.display_rows),
             },
         )
 
@@ -1112,7 +1122,11 @@ class LogViewer:
                 continue
 
             # 🔹 TYPEフィルタ
-            if type_filter != self.TYPE_ALL and row_type != type_filter:
+            if (
+                type_filter != self.TYPE_ALL
+                and type_filter in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "REBOOT"}
+                and row_type != type_filter
+            ):
                 continue
 
             # debag用
@@ -1142,7 +1156,7 @@ class LogViewer:
             self.logger.debug(
                 "filtered_rows prepared",
                 context={
-                    "display_rows": len(self.filtered_rows),
+                    "filtered_rows": len(self.filtered_rows),
                 },
             )
 
@@ -1154,20 +1168,28 @@ class LogViewer:
                     },
                 )
 
+        self.display_rows = summarize(self.filtered_rows)
+        if type_filter != self.TYPE_ALL:
+            self.display_rows = [
+                event
+                for event in self.display_rows
+                if self._get_event_display_type(event) == type_filter
+            ]
+
         # 🔹 表示
         display_index = 0
-        for row in self.filtered_rows:
-            row_trace_id = self._get_log_trace_id(row)
-            row_type = self._get_log_type(row)
+        for row in self.display_rows:
+            row_trace_id = str(row.trace_id)
+            row_type = self._get_event_display_type(row)
             self.tree.insert(
                 "",
                 "end",
                 iid=str(display_index),
                 values=(
                     row_type,
-                    self._format_world_local_time(row["time"]),
+                    self._format_world_local_time(row.time),
                     row_trace_id,
-                    self._get_log_message(row),
+                    row.message,
                 ),
                 tags=(row_type,),
             )
@@ -1188,24 +1210,24 @@ class LogViewer:
 
     def on_click(self, event: tk.Event) -> None:
         """シングルクリックで詳細表示"""
-        log_row: LogDict | None = self._get_row(event)
-        if log_row is None:
+        event_row: Event | None = self._get_display_row(event)
+        if event_row is None:
             return
         self._cancel_pending_single_click()
         self._single_click_after_id = self.root.after(
             200,
-            lambda: self._open_detail(log_row),
+            lambda: self._open_detail(event_row),
         )
 
 
     def on_double_click(self, event: tk.Event) -> None:
         """ダブルクリックでVSCodeを開く"""
         self._cancel_pending_single_click()
-        filtered_row: LogDict | None = self._get_row(event)
-        if filtered_row is None:
+        event_row: Event | None = self._get_display_row(event)
+        if event_row is None:
             return
         # 🔥 LogDict → raw → where
-        raw: LogDict = filtered_row
+        raw: LogDict = event_row.raw
         where: LogWhere = raw.get("where", {})
         file_path: str = str(where.get("file", ""))
         line_no: int = int(where.get("line", 1))
@@ -1221,13 +1243,13 @@ class LogViewer:
 
 
     # ===============================
-    # 🔹 TreeからLogDict取得
+    # 🔹 Treeから表示Event取得
     # ===============================
-    def _get_row(
+    def _get_display_row(
         self,
         event: tk.Event,
-    ) -> LogDict | None:
-        """クリック位置からLogDict取得"""
+    ) -> Event | None:
+        """クリック位置から表示Event取得"""
         row_id: str = self.tree.identify_row(event.y)
         if not row_id:
             return None
@@ -1235,9 +1257,9 @@ class LogViewer:
             index = int(row_id)
         except ValueError:
             return None
-        if index < 0 or index >= len(self.filtered_rows):
+        if index < 0 or index >= len(self.display_rows):
             return None
-        return self.filtered_rows[index]
+        return self.display_rows[index]
 
 
     # ===============================
@@ -1264,6 +1286,18 @@ class LogViewer:
         """複数LogDictからEvent群生成"""
 
         return summarize(rows)
+
+    def _display_raw_rows(self) -> list[LogDict]:
+        """表示中Eventから重複しないLogDictを取り出す。"""
+        logs: list[LogDict] = []
+        seen: set[int] = set()
+        for event in self.display_rows:
+            raw_id: int = id(event.raw)
+            if raw_id in seen:
+                continue
+            seen.add(raw_id)
+            logs.append(event.raw)
+        return logs
 
 
     def extract_source_file(self, msg: str) -> tuple[str | None, int]:
@@ -1338,45 +1372,16 @@ class LogViewer:
 
         return build_traceql_query_error_text(query, error, self.raw_rows, self.current_tz)
 
-    def _get_event(
-        self,
-        event: tk.Event,
-    ) -> Event | None:
-        """クリック位置からEvent取得"""
-
-        row_id: str = self.tree.identify_row(event.y)
-
-        if not row_id:
-            return None
-
-        try:
-            index = int(row_id)
-        except ValueError:
-            return None
-
-        if index < 0 or index >= len(self.event_rows):
-            return None
-
-        return self.event_rows[index]
-
     # ===============================
     # 🔹 詳細ウィンドウ表示
     # ===============================
     def _open_detail(
         self,
-        filtered_row: LogDict,
+        event_row: Event,
     ) -> None:
         """選択されたログの詳細を表示する"""
 
-        raw: LogDict = filtered_row
-
-        # =========================
-        # 🔹 Event化
-        # =========================
-        event_row: Event | None = self._build_event(raw)
-
-        if event_row is None:
-            return
+        raw: LogDict = event_row.raw
 
         renderer = LogRenderer()
 
