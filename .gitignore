@@ -60,10 +60,10 @@ build/
 
 # 管理内外の記述方
 # JSONは基本的に管理外
-logs\*.json
+logs/*.json
 
 # ただし重要なJSONは管理する
-!logs\log_config.json
-!logs\_cache.json
-fv_engine/example/.json
+!logs/log_config.json
+!logs/_cache.json
+fv_engine/example/*.json
 
