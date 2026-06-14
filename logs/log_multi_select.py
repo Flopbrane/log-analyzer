@@ -65,7 +65,7 @@ class LogFileSelector:
             self.window,
             columns=("date", "filename"),
             show="headings",
-            selectmode="extended",
+            selectmode="none",
             yscrollcommand=scrollbar.set,
         )
         self.tree.heading("date", text="Date")
@@ -82,6 +82,7 @@ class LogFileSelector:
             )
         self.tree.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.tree.yview)  # type: ignore[arg-type]
+        self.tree.bind("<Button-1>", self._on_tree_click)
 
         # ボタンフレーム
         button_frame: ttk.Frame = ttk.Frame(self.window)
@@ -102,6 +103,20 @@ class LogFileSelector:
         """
         self.window.wait_window()
         return self.result
+
+    def _on_tree_click(self, event: tk.Event[tk.Widget]) -> str:
+        """1クリックで選択、再クリックで選択解除する。"""
+        row_id: str = self.tree.identify_row(event.y)
+        if not row_id:
+            return "break"
+
+        selected_items: tuple[str, ...] = self.tree.selection()
+        if row_id in selected_items:
+            self.tree.selection_remove(row_id)
+        else:
+            self.tree.selection_add(row_id)
+            self.tree.focus(row_id)
+        return "break"
 
 
     def _on_ok(self) -> None:

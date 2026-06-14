@@ -36,6 +36,7 @@ from logs.log_config import load_viewer_config, save_viewer_config
 from logs.log_multi_select import LogFileSelector
 from logs.log_paths import LOGS_DIR
 from logs.log_searcher import (
+    build_normal_events,
     collect_logs,
     detect_errors,
     detect_reboot,
@@ -1360,7 +1361,7 @@ class LogViewer:
                 search_query,
                 tz,
             )
-            self.display_rows = summarize(self.filtered_rows)
+            self.display_rows = build_normal_events(self.filtered_rows)
 
         self.logger.debug(
             "filter completed",

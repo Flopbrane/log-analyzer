@@ -115,3 +115,35 @@ def test_trace_jump_is_preserved_in_list_and_detail() -> None:
     assert "system_cpu_percent" in detail_text
     assert "from" in detail_text
     assert "to" in detail_text
+
+
+def test_level_error_search_does_not_mix_trace_jump_events() -> None:
+    viewer = _build_viewer()
+    viewer._set_raw_rows(
+        [
+            {
+                "level": "ERROR",
+                "time": "2026-04-23T06:00:36+00:00",
+                "trace_id": "trace-a",
+                "where": {"module": "tester", "file": "test_run_logger.py", "function": "run_test", "line": 39},
+                "what": {"message": "test_error"},
+                "context": {"test": True},
+                "output": "file",
+            },
+            {
+                "level": "ERROR",
+                "time": "2026-04-23T06:00:37+00:00",
+                "trace_id": "trace-b",
+                "where": {"module": "tester", "file": "test_run_logger.py", "function": "run_test", "line": 39},
+                "what": {"message": "test_error"},
+                "context": {"test": True},
+                "output": "file",
+            },
+        ]
+    )
+    viewer.search_var.set("level:ERROR")
+
+    viewer.apply_filter()
+
+    assert len(viewer.display_rows) == 2
+    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == ["ERROR", "ERROR"]
