@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -151,6 +152,26 @@ def _build_event(
         raw=log,
     )
 
+
+def flatten_message_text(value: object) -> str:
+    """what.message を検索・表示しやすい 1 本の文字列へ正規化する。"""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, Mapping):
+        parts: list[str] = []
+        for key, item in value.items():
+            item_text: str = flatten_message_text(item)
+            parts.append(f"{key}={item_text}" if item_text else str(key))
+        return " ".join(part for part in parts if part).strip()
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return " ".join(
+            text for item in value
+            if (text := flatten_message_text(item))
+        ).strip()
+    return str(value).strip()
+
 # =========================
 # 検出系（Log → Event）
 # =========================
@@ -188,7 +209,7 @@ def detect_errors(logs: list[LogDict]) -> list[Event]:
 
     for log in logs:
         level: str = log["level"]
-        message: str = log["what"]["message"]
+        message: str = flatten_message_text(log.get("what", {}).get("message", ""))
 
         if level == "ERROR":
             results.append(
@@ -216,7 +237,8 @@ def detect_reboot(logs: list[LogDict]) -> list[Event]:
     results: list[Event] = []
 
     for log in logs:
-        if log["what"]["message"] == "system_reboot_detected":
+        message: str = flatten_message_text(log.get("what", {}).get("message", ""))
+        if message == "system_reboot_detected":
             results.append(
                 _build_event(
                     log,
@@ -265,11 +287,12 @@ def build_normal_events(logs: list[LogDict]) -> list[Event]:
     results: list[Event] = []
     # 🔥 通常ログ追加（これが重要）
     for log in logs:
+        message: str = flatten_message_text(log.get("what", {}).get("message", ""))
         results.append(
             _build_event(
                 log,
                 type_=None,
-                message=log.get("what", {}).get("message", "")
+                message=message,
             )
         )
     return results
@@ -287,15 +310,16 @@ def summarize(logs: list[LogDict]) -> list[Event]:
     logs = sorted(logs, key=lambda x: x["time"])
 
     base_events: list[Event] = build_normal_events(logs)
+    error_events: list[Event] = detect_errors(logs)
 
     results: list[Event] = []
     results.extend(base_events)
 
     results.extend(detect_trace_jumps(logs))
-    results.extend(detect_errors(logs))
+    results.extend(error_events)
     results.extend(detect_reboot(logs))
 
     # 🔥 ② 時系列保証された状態で判定
-    results.extend(detect_repeat_errors(base_events))
+    results.extend(detect_repeat_errors(error_events))
 
     return sorted(results, key=lambda x: x.time)

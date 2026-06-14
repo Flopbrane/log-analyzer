@@ -117,7 +117,7 @@ def test_trace_jump_is_preserved_in_list_and_detail() -> None:
     assert "to" in detail_text
 
 
-def test_level_error_search_does_not_mix_trace_jump_events() -> None:
+def test_level_error_search_keeps_analysis_events_from_error_logs() -> None:
     viewer = _build_viewer()
     viewer._set_raw_rows(
         [
@@ -145,5 +145,32 @@ def test_level_error_search_does_not_mix_trace_jump_events() -> None:
 
     viewer.apply_filter()
 
+    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
+        "test_error",
+        "ERROR",
+        "test_error",
+        "TRACE_JUMP",
+        "ERROR",
+        "REPEAT_ERROR",
+    ]
+
+
+def test_message_can_be_used_as_type_query() -> None:
+    viewer = _build_viewer()
+    viewer._set_raw_rows(_sample_logs())
+    viewer.search_var.set("type:system_cpu_percent")
+
+    viewer.apply_filter()
+
     assert len(viewer.display_rows) == 2
-    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == ["ERROR", "ERROR"]
+    assert [row.message for row in viewer.display_rows] == [
+        "system_cpu_percent",
+        "system_cpu_percent",
+    ]
+    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
+        "system_cpu_percent",
+        "system_cpu_percent",
+    ]
+
+    detail_text = LogRenderer().build_summary(viewer.display_rows[0], viewer.current_tz)
+    assert "Type  : system_cpu_percent" in detail_text

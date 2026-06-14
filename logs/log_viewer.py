@@ -36,12 +36,8 @@ from logs.log_config import load_viewer_config, save_viewer_config
 from logs.log_multi_select import LogFileSelector
 from logs.log_paths import LOGS_DIR
 from logs.log_searcher import (
-    build_normal_events,
     collect_logs,
-    detect_errors,
-    detect_reboot,
-    detect_repeat_errors,
-    detect_trace_jumps,
+    flatten_message_text,
     summarize,
 )
 from logs.log_storage import load_log
@@ -84,12 +80,6 @@ class LogViewer:
 
     TRACE_ALL: Final[str] = "trace.id_ALL"
     TYPE_ALL: Final[str] = "type_ALL"
-    ANALYSIS_EVENT_TYPES: Final[set[str]] = {
-        EventType.TRACE_JUMP.name,
-        EventType.REBOOT.name,
-        EventType.REPEAT_ERROR.name,
-    }
-
     def __init__(
         self,
         parent: tk.Tk,
@@ -1051,14 +1041,16 @@ class LogViewer:
         )
         types: list[str] = sorted(
             {
-                self._get_log_type(row)
+                candidate
                 for row in self.raw_rows
+                for candidate in self._get_log_type_candidates(row)
             }
         )
         event_types: list[str] = sorted(
             {
-                self._get_event_display_type(event)
-                for event in self._build_analysis_rows(self.raw_rows)
+                candidate
+                for event in summarize(self.raw_rows)
+                for candidate in self._get_event_type_candidates(event)
             }
         )
         types = sorted(set(types) | set(event_types))
@@ -1096,12 +1088,37 @@ class LogViewer:
         """LogDictからlevel取得"""
         return row["level"]
 
+    def _get_log_type_candidates(
+        self,
+        row: LogDict,
+    ) -> set[str]:
+        """LogDictが type 候補として持つ値を返す。"""
+        candidates: set[str] = {self._get_log_type(row)}
+        message_text: str = flatten_message_text(row.get("what", {}).get("message", ""))
+        if message_text:
+            candidates.add(message_text)
+        return candidates
+
     def _get_event_display_type(
         self,
         row: Event,
     ) -> str:
         """TreeviewのType列に表示する種別を取得する。"""
-        return row.type.name if row.type is not None else row.level.name
+        if row.type is not None:
+            return row.type.name
+        message_text: str = flatten_message_text(row.raw.get("what", {}).get("message", ""))
+        return message_text or row.level.name
+
+    def _get_event_type_candidates(
+        self,
+        row: Event,
+    ) -> set[str]:
+        """Eventが type 条件で一致できる候補を返す。"""
+        candidates: set[str] = {self._get_event_display_type(row)}
+        message_text: str = flatten_message_text(row.raw.get("what", {}).get("message", ""))
+        if row.type is None and message_text:
+            candidates.add(message_text)
+        return candidates
 
     def _set_raw_rows(
         self,
@@ -1111,74 +1128,6 @@ class LogViewer:
         self.raw_rows = logs
         self.filtered_rows = []
         self.display_rows = []
-
-    def _build_analysis_rows(
-        self,
-        logs: list[LogDict],
-    ) -> list[Event]:
-        """分析Eventだけを必要時に構築する。"""
-        error_events: list[Event] = detect_errors(logs)
-        analysis_rows: list[Event] = []
-        analysis_rows.extend(detect_trace_jumps(logs))
-        analysis_rows.extend(detect_reboot(logs))
-        analysis_rows.extend(detect_repeat_errors(error_events))
-        analysis_rows.sort(key=lambda event: event.time)
-        return analysis_rows
-
-    def _collect_query_type_values(
-        self,
-        node: QueryNode | None,
-    ) -> set[str]:
-        """検索ASTから type:... の値一覧を取り出す。"""
-        if node is None:
-            return set()
-        if isinstance(node, FieldNode) and node.field.lower() == "type":
-            return {node.value.upper()}
-        if isinstance(node, NotNode):
-            return self._collect_query_type_values(node.child)
-        if isinstance(node, AndNode | OrNode):
-            return self._collect_query_type_values(node.left) | self._collect_query_type_values(node.right)
-        return set()
-
-    def _build_event_search_pool(
-        self,
-        type_filter: str,
-        search_query: SearchQuery,
-    ) -> list[Event]:
-        """type検索用のEvent候補集合を返す。"""
-        requested_types: set[str] = self._collect_query_type_values(search_query.ast_root)
-        requested_analysis_types: set[str] = {
-            type_name
-            for type_name in requested_types
-            if type_name in self.ANALYSIS_EVENT_TYPES
-        }
-        only_analysis_types: bool = bool(requested_analysis_types) and requested_analysis_types == requested_types
-        if type_filter in self.ANALYSIS_EVENT_TYPES and not requested_types:
-            only_analysis_types = True
-        if only_analysis_types:
-            return self._build_analysis_rows(self.raw_rows)
-        return summarize(self.raw_rows)
-
-    def _filter_raw_rows(
-        self,
-        trace_filter: str,
-        type_filter: str,
-        search_query: SearchQuery,
-        tz: str,
-    ) -> list[LogDict]:
-        """LogDictで先に絞れる通常検索を適用する。"""
-        filtered_rows: list[LogDict] = []
-        for row in self.raw_rows:
-            row_trace_id: str = self._get_log_trace_id(row)
-            row_type: str = self._get_log_type(row)
-            if trace_filter != self.TRACE_ALL and row_trace_id != trace_filter:
-                continue
-            if type_filter != self.TYPE_ALL and type_filter not in self.ANALYSIS_EVENT_TYPES and row_type != type_filter:
-                continue
-            if not match_search_query(row, search_query, tz):
-                continue
-            filtered_rows.append(row)
-        return apply_result_modifiers(filtered_rows, search_query, tz)
 
     def _filter_event_rows(
         self,
@@ -1192,10 +1141,9 @@ class LogViewer:
         display_rows: list[Event] = []
         for event_row in event_rows:
             row_trace_id: str = str(event_row.trace_id)
-            row_type: str = self._get_event_display_type(event_row)
             if trace_filter != self.TRACE_ALL and row_trace_id != trace_filter:
                 continue
-            if type_filter != self.TYPE_ALL and row_type != type_filter:
+            if type_filter != self.TYPE_ALL and type_filter not in self._get_event_type_candidates(event_row):
                 continue
             if not self._match_event_search_query(event_row, search_query, tz):
                 continue
@@ -1231,7 +1179,7 @@ class LogViewer:
             field: str = node.field.lower()
             value: str = node.value.lower()
             if field == "type":
-                return self._get_event_display_type(row).lower() == value
+                return any(candidate.lower() == value for candidate in self._get_event_type_candidates(row))
             if field == "level":
                 return row.level.name.lower() == value
         if isinstance(node, NotNode):
@@ -1243,27 +1191,6 @@ class LogViewer:
 
         node_query = SearchQuery(raw_text=query.raw_text, ast_root=node)
         return match_search_query(row.raw, node_query, tz)
-
-    def _query_uses_event_type(
-        self,
-        search_query: SearchQuery,
-    ) -> bool:
-        """検索条件がEvent.typeを参照しているか判定する。"""
-        return self._query_node_uses_event_type(search_query.ast_root)
-
-    def _query_node_uses_event_type(
-        self,
-        node: QueryNode | None,
-    ) -> bool:
-        if node is None:
-            return False
-        if isinstance(node, FieldNode):
-            return node.field.lower() == "type"
-        if isinstance(node, NotNode):
-            return self._query_node_uses_event_type(node.child)
-        if isinstance(node, AndNode | OrNode):
-            return self._query_node_uses_event_type(node.left) or self._query_node_uses_event_type(node.right)
-        return False
 
     def _build_fv_result_from_display_rows(
         self,
@@ -1337,31 +1264,15 @@ class LogViewer:
         # 🔹 画面クリア
         self.tree.delete(*self.tree.get_children())
 
-        uses_event_route: bool = (
-            self._query_uses_event_type(search_query)
-            or type_filter in self.ANALYSIS_EVENT_TYPES
+        event_rows: list[Event] = summarize(self.raw_rows)
+        self.display_rows = self._filter_event_rows(
+            event_rows,
+            trace_filter,
+            type_filter,
+            search_query,
+            tz,
         )
-        if uses_event_route:
-            event_rows: list[Event] = self._build_event_search_pool(
-                type_filter,
-                search_query,
-            )
-            self.display_rows = self._filter_event_rows(
-                event_rows,
-                trace_filter,
-                type_filter,
-                search_query,
-                tz,
-            )
-            self.filtered_rows = self._display_raw_rows()
-        else:
-            self.filtered_rows = self._filter_raw_rows(
-                trace_filter,
-                type_filter,
-                search_query,
-                tz,
-            )
-            self.display_rows = build_normal_events(self.filtered_rows)
+        self.filtered_rows = self._display_raw_rows()
 
         self.logger.debug(
             "filter completed",

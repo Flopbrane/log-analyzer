@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from logs.context_types import ContextType, ContextValue
 from logs.log_types import Event, LogDict, LogWhere
+from logs.log_searcher import flatten_message_text
 from logs.time_utils import (
     to_world_local_datetime,
 )
@@ -231,9 +232,12 @@ class LogRenderer:
         time_utc_line: str
         time_local_line: str
         time_local_line, time_utc_line = self.format_time_full(row.time, tz)
+        display_type: str = row.type.name if row.type else (
+            flatten_message_text(raw.get("what", {}).get("message", "")) or "-"
+        )
 
         parts: list[tuple[str, str]] = [
-            (f"Type  : {row.type.name if row.type else '-'}", color),
+            (f"Type  : {display_type}", color),
             (f"Level : {level}", color),
             (time_local_line, "#000000"),
             (time_utc_line, "#888888"),
