@@ -17,6 +17,9 @@ from logs.log_types import LogDict, LogWhat
 if TYPE_CHECKING:
     from multi_info_logger import AppLogger
 
+__all__: list[str] = [
+    "validate_log",
+]
 
 def validate_log(
     raw: dict[str, Any],
@@ -47,7 +50,7 @@ def validate_log(
         return None
     # 👇 ここが最重要🔥
     raw_what_dict: dict[str, Any] = cast(dict[str, Any], raw_what)
-    
+
     # messageは必須
     message_raw: object = raw_what_dict.get("message")
     if not isinstance(message_raw, str):

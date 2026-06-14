@@ -11,6 +11,11 @@ from logs.time_utils import to_world_local_datetime
 TIME_HH_MM_PATTERN: re.Pattern[str] = re.compile(r"\d{1,2}:\d{1,2}")
 
 
+__all__: list[str] = [
+    "collect_log_dates",
+    "build_search_text_datetime",
+]
+
 def collect_log_dates(
     rows: Sequence[Mapping[str, Any]],
     timezone_name: str,

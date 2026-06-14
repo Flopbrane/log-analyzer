@@ -11,6 +11,10 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
+__all__: list[str] = [
+    "LogFileSelector",
+]
+
 
 class LogFileSelector:
     """複数のログファイルを選択するためのGUIクラス"""

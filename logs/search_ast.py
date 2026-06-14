@@ -100,3 +100,17 @@ class OrNode(QueryNode):
     right: QueryNode
 
     _fields: ClassVar[tuple[str, ...]] = ("left", "right")
+
+
+__all__: list[str] = [
+    "QueryNode",
+    "EmptyNode",
+    "TermNode",
+    "FieldNode",
+    "RegexNode",
+    "SimilarNode",
+    "CompareNode",
+    "NotNode",
+    "AndNode",
+    "OrNode",
+]

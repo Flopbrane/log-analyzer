@@ -118,3 +118,14 @@ class SearchQuery:
     ignore_rules: list[IgnoreRule] = field(
         default_factory=_empty_ignore_rule_list,
     )
+
+
+__all__: list[str] = [
+    "SearchableLog",
+    "SearchQuery",
+    "SortSpec",
+    "FieldFilter",
+    "IgnoreRule",
+    "AggregateQuery",
+    "AggregateResult",
+]

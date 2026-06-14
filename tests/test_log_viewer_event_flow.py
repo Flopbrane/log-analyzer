@@ -147,10 +147,8 @@ def test_level_error_search_keeps_analysis_events_from_error_logs() -> None:
 
     assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
         "test_error",
-        "ERROR",
         "test_error",
         "TRACE_JUMP",
-        "ERROR",
         "REPEAT_ERROR",
     ]
 

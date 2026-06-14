@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0415, C0116
 """OpenAI API KeyをScriptへ直書きせずOS資格情報ストアで扱う。"""
+##########################
+# Author: F.Kurokawa
+# Description:
+# OpenAI API Keyの管理
+##########################
+
 from __future__ import annotations
 
 from typing import Any
@@ -66,3 +73,13 @@ def delete_openai_api_key() -> None:
         keyring.delete_password(SERVICE_NAME, ACCOUNT_NAME)
     except keyring.errors.PasswordDeleteError:
         return
+
+
+__all__: list[str] = [
+    "is_keyring_available",
+    "create_openai_client",
+    "get_openai_api_key",
+    "has_openai_api_key",
+    "save_openai_api_key",
+    "delete_openai_api_key",
+]

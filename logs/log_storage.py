@@ -16,6 +16,14 @@ from file_adapter.adapter_types import AdapterResult
 from file_adapter.extra_file_storage import load_extra_records
 
 
+__all__: list[str] = [
+    "load_log",
+    "load_multi_logs",
+    "save_log",
+]
+
+
+
 def load_log(log_path: Path) -> list[dict[str, Any]]:
     """ログファイルを読み込む"""
     log_entries: list[dict[str, Any]] | None = _load_json_lines(log_path)

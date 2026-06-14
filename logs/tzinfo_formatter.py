@@ -15,8 +15,22 @@ from zoneinfo import available_timezones
 from logs.time_utils import TzdataUpdateResult, update_tzdata_if_needed
 
 
+__all__: list[str] = [
+    "TimeZoneItem",
+    "TimeZoneData",
+    "ensure_tzdata_updated",
+    "is_excluded_prefix",
+    "build_timezone_items",
+    "build_area_map",
+    "build_tz_label",
+    "build_timezone_data",
+]
+
+
+
 @dataclass(slots=True)
 class TimeZoneItem:
+    """タイムゾーンの情報を纏めるクラス"""
     zone: str
     area: str
     city: str
@@ -24,6 +38,7 @@ class TimeZoneItem:
 
 @dataclass(slots=True)
 class TimeZoneData:
+    """Viewer用のTimeZoneデータを纏めるクラス"""
     area_list: list[str]
     area_map: dict[str, list[TimeZoneItem]]
 
@@ -73,9 +88,9 @@ def build_timezone_items() -> list[TimeZoneItem]:
             continue
 
         area, city = tz.split("/", 1)
-        
+
         label = build_tz_label(tz)
-        
+
         items.append(
             TimeZoneItem(
                 zone=tz,
@@ -92,10 +107,10 @@ def build_area_map(
 ) -> dict[str, list[TimeZoneItem]]:
     """tzinfoに含まれているarea情報をkeyとしてメインの辞書を作成する関数"""
     area_map: dict[str, list[TimeZoneItem]] = {}
-    
+
     for item in items:
         area_map.setdefault(item.area, []).append(item)
-    
+
     for area_items in area_map.values():
         area_items.sort(key=lambda x: x.city)
 

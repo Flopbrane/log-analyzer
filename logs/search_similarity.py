@@ -156,9 +156,16 @@ def similarity_score(query_text: str, document_text: str) -> float:
 # Future OpenAI embeddings hook (requires OPENAI_API_KEY and paid API access):
 
 def embedding_vector(text: str) -> list[float]:
+    """OpenAIの埋め込みAPIを使ってテキストをベクトル化する。"""
     client = OpenAI()
     response: CreateEmbeddingResponse = client.embeddings.create(
         model="text-embedding-3-small",
         input=text,
     )
     return response.data[0].embedding
+
+
+__all__: list[str] = [
+    "similarity_score",
+    "embedding_vector",
+]

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0103
 """アプリ全体共通ロガー"""
 from __future__ import annotations
 

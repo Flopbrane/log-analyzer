@@ -21,6 +21,12 @@ except ImportError:
 if TYPE_CHECKING:
     from logs.multi_info_logger import AppLogger
 
+
+__all__: list[str] = [
+    "SystemMonitor",
+]
+
+
 class SystemMonitor:
     """システムの監視を行うクラス"""
     def __init__(self, logger: "AppLogger") -> None:

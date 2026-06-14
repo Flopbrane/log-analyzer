@@ -19,7 +19,19 @@ from logs.log_types import LogDict
 from query_engine.evaluators.memory import match_query
 from query_engine.models import Document
 from query_engine.parser import QuerySyntaxError
-from query_engine.query_error_formatter import build_query_error_text as build_traceql_query_error_text
+from query_engine.query_error_formatter import build_query_error_text
+
+
+__all__: list[str] = [
+    "TraceQLLogResult",
+    "build_traceql_query_error_text",
+    "match_traceql_search",
+    "analyze_logs_for_viewer",
+    "filter_logs_for_viewer",
+    "log_to_traceql_document",
+    "should_use_legacy_search",
+]
+
 
 SORT_PATTERN: re.Pattern[str] = re.compile(
     r"^(?P<body>.*?)"
@@ -46,6 +58,27 @@ class TraceQLLogResult:
     matched: bool
     log: LogDict
     document: Document
+
+
+def build_traceql_query_error_text(
+    query: str,
+    error: str,
+    rows: Iterable[LogDict] | None = None,
+    timezone_name: str = "Asia/Tokyo",
+) -> str:
+    """TraceQL/parser系エラーを Viewer 向けの補足文へ変換する。"""
+    normalized_rows: list[Document] = []
+    if rows is not None:
+        normalized_rows = [
+            log_to_traceql_document(log, timezone_name)
+            for log in rows
+        ]
+    return build_query_error_text(
+        query=query,
+        error=error,
+        rows=normalized_rows,
+        timezone_name=timezone_name,
+    )
 
 
 def match_traceql_search(log: LogDict, raw_query: str, tz: str | tzinfo) -> bool:

@@ -13,6 +13,21 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, NewType, NotRequired, TypeAlias, TypedDict
 
+__all__: list[str] = [
+    "ISODateTimeStr",
+    "TraceId",
+    "LogLevelStr",
+    "LogOutputStr",
+    "EventType",
+    "LogOutput",
+    "LogLevel",
+    "LogWhere",
+    "LogWhat",
+    "RawLogRecord",
+    "LogDict",
+    "Event",
+]
+
 # ログの種類定義
 # 　Alias = 同じ型（見た目だけ変える）
 # NewType = 別型（型チェック用）
@@ -26,7 +41,6 @@ ISODateTimeStr: TypeAlias = str
 TraceId = NewType("TraceId", str)
 LogLevelStr = NewType("LogLevelStr", str)
 LogOutputStr = NewType("LogOutputStr", str)
-
 
 # ==========================================================
 # 型

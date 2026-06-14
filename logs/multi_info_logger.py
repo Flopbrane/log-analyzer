@@ -278,7 +278,9 @@ class AppLogger:
                     # 🔥 ここが本命（自動変換）
                     resolved_context = ctx(**context)
 
-            except Exception:
+            except (ValueError, TypeError) as e:
+                print(f"[LOGGER WARNING] Context normalization failed: {e}")
+                # 🔥 変換に失敗しても、元の context を保存する
                 # 💥 万が一の保険（絶対落とさない）
                 resolved_context = dict(context)
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from logs.log_types import LogDict
-from logs.traceql_bridge import TraceQLLogResult, analyze_logs_for_viewer, filter_logs_for_viewer
+from logs.traceql_bridge import TraceQLLogResult, analyze_logs_for_viewer, build_traceql_query_error_text, filter_logs_for_viewer
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 
@@ -71,6 +71,32 @@ class TraceQLBridgeBoundaryTests(unittest.TestCase):
 
         filtered: list[LogDict] = filter_logs_for_viewer(logs, "level:ERROR", "Asia/Tokyo")
         self.assertEqual([logs[0]], filtered)
+
+    def test_bridge_formats_query_error_text(self) -> None:
+        logs: list[LogDict] = [
+            cast(
+                LogDict,
+                {
+                    "level": "INFO",
+                    "time": "2026-05-26T01:23:45+00:00",
+                    "trace_id": "trace-1",
+                    "where": {"function": "run", "file": "worker.py"},
+                    "what": {"message": "disk failure"},
+                    "context": {},
+                    "output": "file",
+                },
+            ),
+        ]
+
+        text: str = build_traceql_query_error_text(
+            "levl:",
+            "expected field value at position 5",
+            logs,
+            "Asia/Tokyo",
+        )
+
+        self.assertIn("QUERY ERROR", text)
+        self.assertIn("Query : levl:", text)
 
 
 if __name__ == "__main__":

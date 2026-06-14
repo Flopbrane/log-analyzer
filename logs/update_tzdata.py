@@ -8,6 +8,7 @@ from logs.time_utils import TzdataUpdateResult, update_tzdata_if_needed
 
 
 def main() -> None:
+    """tzdataの更新を行い、結果をダイアログで表示する。"""
     root = tk.Tk()
     root.withdraw()
 

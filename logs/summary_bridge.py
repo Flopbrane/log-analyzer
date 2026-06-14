@@ -55,3 +55,11 @@ def _to_summary_log(log: LogDict) -> LogSummaryDict:
         "context": dict(context),
         "output": str(log.get("output", "")),
     }
+
+
+__all__: list[str] = [
+    "summarize_logs_for_viewer",
+    "summarize_text_for_viewer",
+]
+# Since this module is meant to be the only interface between the viewer and the summary engine,
+# we explicitly define __all__ to control what is exposed.

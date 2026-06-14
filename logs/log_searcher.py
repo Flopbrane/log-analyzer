@@ -6,7 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from logs.log_app import get_logger
 from logs.log_storage import load_log
@@ -160,14 +160,16 @@ def flatten_message_text(value: object) -> str:
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, Mapping):
+        mapping_value: Mapping[object, object] = cast(Mapping[object, object], value)
         parts: list[str] = []
-        for key, item in value.items():
+        for key, item in mapping_value.items():
             item_text: str = flatten_message_text(item)
             parts.append(f"{key}={item_text}" if item_text else str(key))
         return " ".join(part for part in parts if part).strip()
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        sequence_value: Sequence[object] = cast(Sequence[object], value)
         return " ".join(
-            text for item in value
+            text for item in sequence_value
             if (text := flatten_message_text(item))
         ).strip()
     return str(value).strip()
@@ -261,9 +263,8 @@ def detect_repeat_errors(events: list[Event]) -> list[Event]:
     seen: set[str] = set()
 
     for e in events:
-
-        # 🔥 エラー系だけ対象
-        if e.type not in (EventType.ERROR, EventType.REPEAT_ERROR):
+        # 🔥 生ログの重要度(level)を基準に繰り返し判定する
+        if e.level not in (LogLevel.ERROR, LogLevel.CRITICAL):
             continue
 
         message: str = e.message
@@ -310,16 +311,14 @@ def summarize(logs: list[LogDict]) -> list[Event]:
     logs = sorted(logs, key=lambda x: x["time"])
 
     base_events: list[Event] = build_normal_events(logs)
-    error_events: list[Event] = detect_errors(logs)
 
     results: list[Event] = []
     results.extend(base_events)
 
     results.extend(detect_trace_jumps(logs))
-    results.extend(error_events)
     results.extend(detect_reboot(logs))
 
     # 🔥 ② 時系列保証された状態で判定
-    results.extend(detect_repeat_errors(error_events))
+    results.extend(detect_repeat_errors(base_events))
 
     return sorted(results, key=lambda x: x.time)

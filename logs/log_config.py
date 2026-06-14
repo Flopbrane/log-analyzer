@@ -12,6 +12,13 @@ import os
 from dataclasses import dataclass
 from typing import Any, cast
 
+__all__: list[str] = [
+    "LoggerConfig",
+    "load_viewer_config",
+    "save_viewer_config",
+]
+
+
 
 @dataclass
 class LoggerConfig:

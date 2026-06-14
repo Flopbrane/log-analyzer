@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0301, C0303, W0613
 """検索ASTをLogDictへ適用する判定モジュール。"""
 from __future__ import annotations
 

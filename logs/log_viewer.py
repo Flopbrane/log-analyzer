@@ -41,7 +41,7 @@ from logs.log_searcher import (
     summarize,
 )
 from logs.log_storage import load_log
-from logs.log_types import Event, EventType, LogDict, LogWhere
+from logs.log_types import Event, LogDict, LogWhere
 from logs.log_validator import validate_log
 from logs.multi_info_logger import AppLogger
 from logs.openai_key_store import delete_openai_api_key, has_openai_api_key, is_keyring_available, save_openai_api_key
@@ -52,7 +52,7 @@ from logs.result_exporter import (
     export_to_json,
 )
 from logs.search_ast import AndNode, EmptyNode, FieldNode, NotNode, OrNode, QueryNode
-from logs.search_matcher import apply_result_modifiers, match_search_query, run_aggregate_query
+from logs.search_matcher import match_search_query, run_aggregate_query
 from logs.search_models import AggregateResult, SearchQuery
 from logs.search_text_analysis import parse_query
 from logs.search_text_preprocessor import build_search_text_datetime
@@ -1192,6 +1192,27 @@ class LogViewer:
         node_query = SearchQuery(raw_text=query.raw_text, ast_root=node)
         return match_search_query(row.raw, node_query, tz)
 
+    def _query_uses_event_type(
+        self,
+        search_query: SearchQuery,
+    ) -> bool:
+        """検索条件が Event.type 系の評価を必要とするか判定する。"""
+        return self._query_node_uses_event_type(search_query.ast_root)
+
+    def _query_node_uses_event_type(
+        self,
+        node: QueryNode | None,
+    ) -> bool:
+        if node is None:
+            return False
+        if isinstance(node, FieldNode):
+            return node.field.lower() == "type"
+        if isinstance(node, NotNode):
+            return self._query_node_uses_event_type(node.child)
+        if isinstance(node, AndNode | OrNode):
+            return self._query_node_uses_event_type(node.left) or self._query_node_uses_event_type(node.right)
+        return False
+
     def _build_fv_result_from_display_rows(
         self,
         plan: ExecutionPlan,
@@ -1303,7 +1324,7 @@ class LogViewer:
         display_index = 0
         for row in self.display_rows:
             row_trace_id = str(row.trace_id)
-            row_type = self._get_event_display_type(row)
+            row_type: str = self._get_event_display_type(row)
             self.tree.insert(
                 "",
                 "end",
