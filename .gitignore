@@ -65,3 +65,5 @@ logs\*.json
 # ただし重要なJSONは管理する
 !logs\log_config.json
 !logs\_cache.json
+fv_engine/example/.json
+
