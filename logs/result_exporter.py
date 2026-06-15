@@ -25,6 +25,7 @@ from summary_engine.summary_types import NumericStats, RankingItem, SummaryResul
 
 CSV_TEXT_ENCODING = "utf-8-sig"
 JSON_TEXT_ENCODING = "utf-8"
+INVESTIGATION_REPORT_FORMAT_VERSION = "0.1"
 
 EVENT_CSV_HEADERS: tuple[str, ...] = (
     "type",
@@ -184,15 +185,20 @@ def export_investigation_report_json(
     save_file_path: str | Path | None = None,
 ) -> Path | None:
     """検索結果・Event・要約を調査レポートJSONとして保存する。"""
+    log_rows: list[LogDict] = list(logs)
+    event_rows: list[Event] = list(events)
     report: dict[str, Any] = {
         "kind": "investigation_report",
+        "format_version": INVESTIGATION_REPORT_FORMAT_VERSION,
         "condition_text": condition_text,
         "timezone": timezone_name,
+        "log_count": len(log_rows),
+        "event_count": len(event_rows),
         "source_files": [str(path) for path in source_files],
     }
     return export_to_json(
-        logs=logs,
-        events=events,
+        logs=log_rows,
+        events=event_rows,
         summary=summary,
         report=report,
         save_file_path=save_file_path,

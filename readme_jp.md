@@ -1,106 +1,164 @@
 # Info Logger（日本語版）
 
-![version](https://img.shields.io/badge/version-v0.9.9-blue)
+![version](https://img.shields.io/badge/version-v1.0.0--rc1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![stars](https://img.shields.io/github/stars/Flopbrane/log-analyzer?style=social)
->⚠ Python 3.9 以上が必要です
 
-Info Logger は、  
-**ログ出力・分析・可視化を一体化したログシステム**です。
+> ⚠ Python 3.9 以上が必要です
 
----
+**Info Logger** は、構造化ログ・分析・GUI表示・要約・調査レポート出力を一体化したログ診断システムです。
 
-## ✨ 現在の仕様状態: Ver.0.9.9
+> これは単なるロガーではありません。  
+> **プログラムの挙動を理解するための診断システム**です。
 
-Ver.0.9.9 は、1.0直前の完成度を持つプレリリース版です。
-
-- `query_engine/` は、このLogger_project内部の独立した TraceQL / query core として扱います。
-- Logger / Viewer 側から `query_engine` へ入る入口は `logs/traceql_bridge.py` に統一しています。
-- 検索構文エラーでGUIを落とさず、`QUERY ERROR` として解析可能なイベントにします。
-- エラー表示には query、caret位置、期待構文、辞書ベースの候補を含めます。
-- 内部時刻はUTC、Viewer表示は選択中のローカルタイムゾーンです。
-- `tzdata` は `logs/.tzdata_ver_reference` で `年:tzdata-version` を記録します。
+- English version → [README.md](README.md)
 
 ---
 
-## メインウインドウ
+## ✨ 現在の状態: v1.0.0-rc1
 
-<img src="docs/image/main_window.png" alt="Log Viewer Main Window" width="900">
+`v1.0.0-rc1` は、Info Logger の最初のリリース候補版です。
 
-## 🔍 詳細ウインドウ
+現在、以下の診断パイプラインが接続されています。
 
-<img src="docs/image/sub_window.png" alt="Log Viewer Sub Window" width="600">
+```text
+構造化ログ出力
+↓
+LogDict 検証
+↓
+Event 解析
+↓
+TraceQL / type 検索
+↓
+FV レシピ実行
+↓
+summary_engine 要約
+↓
+GUI 詳細表示
+↓
+CSV / JSON / 調査レポート保存
+```
 
-## 🎯 これは何？
+このリリース候補には、以下が含まれます。
 
-一般的なロガーは **「ログを出すだけ」** です。
-
-**Info Logger は違います**：
-
-- ✅ 構造化ログ（JSON Lines）
-- ✅ 自動分析（エラー・trace・再起動検出）
-- ✅ GUI Viewer による即時確認
-
-👉 ログは単なる出力ではなく  
-👉 **「状態変化＝イベント」**として扱います
+- JSON Lines による構造化ログ
+- `LogDict` の検証と正規化
+- `Event.type`, `Event.level`, `message` の分離
+- Trace jump 検出
+- システム再起動検出
+- 繰り返しエラー検出
+- 日本語 / 英語 GUI Viewer
+- TraceQL bridge 経由の検索
+- FV レシピ実行
+- Summary engine による要約
+- CSV / JSON 出力
+- 調査レポート出力
+- UTC記録 + Viewer側ローカル時刻表示
+- 大容量ログ向け SQLite アダプター
 
 ---
 
-## ✨ 主な特徴
+## 🧠 基本コンセプト
+
+一般的なロガーは、文字列としてログを記録するだけです。
+
+Info Logger は、ログを構造化された記録として扱い、さらに解析によって意味のあるイベントへ変換します。
+
+```text
+LogDict = 記録
+Event   = 意味
+```
+
+特に重要な設計ルールは次の3つです。
+
+```text
+level   = 元ログの重要度
+type    = 解析によって付与された分類
+message = 実際に起きた内容
+```
+
+例:
+
+```text
+level: INFO
+type : TRACE_JUMP
+message: trace_id changed
+```
+
+これにより、元ログの重要度と、解析によって発見された意味を分離して扱えます。
+
+---
+
+## ✨ 主な機能
 
 ### 🔍 trace_id による追跡
 
-- 処理の流れをセッション単位で追跡可能
-- trace_id は、アプリケーションの起動ごとに一意に割り当てられるIDです。
+- 処理の流れをセッション単位で追跡
+- アプリケーション起動やログ切り替わりを追いやすくする
 
----
+### 📍 発生箇所の自動記録
 
-### 📍 発生箇所の自動取得
+- ファイル
+- 行番号
+- 関数名
+- モジュール
 
-- ファイル / 行 / 関数を自動記録
+を自動で記録します。
 
----
+### 🧠 Event 解析
 
-### 🧠 ログ解析機能
-
-- ERROR / CRITICAL 検出
-- trace_idの変化（TRACE_JUMP）
-- システム再起動検出
-
----
+- Trace jump
+- システム再起動
+- 繰り返しエラー
+- ERROR / CRITICAL の重要度管理
 
 ### 🖥️ GUI Viewer
 
-- ログを即時表示
-- フィルタ（type / trace_id）
-- JSON詳細表示
-- 日本語 / 英語表示に対応
+- 単一ログ / 複数ログを読み込み
+- `type`, `level`, `trace_id`, テキストによる検索
+- Event 詳細表示
+- RAW JSON 表示
+- 日本語 / 英語 UI 切り替え
 
----
+### 📘 Summary Engine
 
-### 🕒 時刻管理
+検索・フィルタ後のログから、調査しやすい要約を生成します。
 
-- 内部処理：UTC
-- 表示：Viewerで選択したローカル時間
-- `logs/.tzdata_ver_reference` に確認済みの `年:tzdata-version` を記録
-- `python -m logs.update_tzdata` で TimeZoneData を明示更新可能
+- レベル別件数
+- モジュールランキング
+- メッセージランキング
+- 数値 context の統計
+- 所見テキスト
 
----
+### 📄 調査レポート出力
+
+調査レポートは JSON として保存され、以下を保持します。
+
+```text
+logs     = 元ログ
+events   = 解析イベント
+summary  = 要約結果
+report   = 調査メタ情報
+```
 
 ### 🔎 TraceQL Bridge
 
-- 高度な検索判定は `logs/traceql_bridge.py` を経由
-- `logs` 側から `query_engine` を直接 import しない設計
-- LogDict を TraceQL 用 Document に変換してから解析
+高度な検索判定は `logs/traceql_bridge.py` を経由します。
 
----
+```text
+logs / viewer
+    ↓
+logs.traceql_bridge
+    ↓
+query_engine
+```
+
+Viewer や Logger 固有処理が、検索コアに直接依存しないようにするための設計です。
 
 ### 🧭 Query Error レポート
 
-- `level:` のような未完成クエリを `QUERY ERROR` として表示
-- エラー位置を `^` で表示
-- `logs/error_response_dict.py` の辞書を使って候補を提示
+検索構文エラーで Viewer を落とさず、`QUERY ERROR` として表示します。
 
 例:
 
@@ -114,30 +172,51 @@ Did you mean:
 - level:INFO
 ```
 
+### 🗄️ SQLite アダプター
+
+大容量ログを SQLite に保存し、バッチ検索できます。
+
+- 数百MB〜数GB級ログを想定
+- `iter_search()` による分割処理
+- Viewer側では `traceql_bridge.py` 経由で扱う方針
+
+### 🕒 Timezone 対応
+
+- 内部記録は UTC
+- Viewer 表示は選択したローカルタイムゾーン
+- `logs/.tzdata_ver_reference` に確認済み tzdata を記録
+- `python -m logs.update_tzdata` で明示更新可能
+
 ---
 
-### 🗄️ SQLiteアダプター
+## 🖼️ スクリーンショット
 
-- 大容量ログを SQLite に保存して検索可能
-- 数百MB〜数GB級のログを想定
-- `iter_search()` によるバッチ処理に対応
-- Logger側から利用する場合も `traceql_bridge.py` 経由を推奨
+### メインウインドウ
+
+<img src="docs/image/main_window.png" alt="Log Viewer Main Window" width="900">
+
+### 詳細ウインドウ
+
+<img src="docs/image/sub_window.png" alt="Log Viewer Detail Window" width="600">
 
 ---
 
 ## ⚡ クイックスタート
 
-### ① クローン
+### 1. クローン
 
 ```bash
 git clone https://github.com/Flopbrane/log-analyzer.git
-
 cd log-analyzer
 ```
 
----
+### 2. 依存関係のインストール
 
-### ② 基本的な使い方
+```bash
+pip install -r requirements.txt
+```
+
+### 3. 基本的な使い方
 
 ```python
 from logs.log_app import get_logger
@@ -149,52 +228,81 @@ logger.warning("異常検知", context={"value": 42})
 logger.error("処理失敗", status="failed")
 ```
 
----
-
-### ③ ビューアの起動
+### 4. Viewer 起動
 
 ```bash
 python -m logs.log_viewer
 ```
 
-👉 GUIでログを即時確認
+---
+
+## 🔍 検索例
+
+```text
+type:TRACE_JUMP
+level:ERROR
+message:"system_cpu_percent"
+trace_id:230b4afdc5cc47349267e9ab954c1a05
+```
+
+FV レシピを読み込むと、レシピ内の検索条件を Viewer に反映し、要約やレポート出力まで実行できます。
+
+例:
+
+```text
+type:TRACE_JUMP
+```
 
 ---
 
 ## 🧱 アーキテクチャ
 
-アプリケーション  
-↓  
-Logger（AppLogger）  
-↓  
-JSON Linesログファイル  
-↓  
-log_searcher（解析）  
-↓  
-traceql_bridge（TraceQLとの境界）  
-↓  
-query_engine / SQLite adapter  
-↓  
-イベント（LogEvent）  
-↓  
-log_viewer（GUI表示）  
+```text
+Application
+↓
+Logger / AppLogger
+↓
+JSON Lines log file
+↓
+log_validator
+↓
+log_searcher / analyzer
+↓
+Event
+↓
+traceql_bridge
+↓
+query_engine / SQLite adapter
+↓
+summary_engine
+↓
+log_viewer
+↓
+CSV / JSON / investigation report
+```
 
 ---
 
 ## 🧠 設計思想
 
-- ログは「イベント」である
-- LogRecordは不変（immutable）
-- trace_idは「セッション単位」
-- 責務分離を徹底
+- ログは単なる文字列ではなく、構造化された記録
+- Event はログから抽出された意味
+- `trace_id` は実行セッションを表す
+- 内部時刻は UTC
+- 表示時刻は Viewer 側で選択
+- Viewer / Logger / Query Engine / Summary Engine を分離
+- Query Engine への入口は bridge に集約
+- レポートには元ログと解析イベントの両方を残す
 
-|    層    | 役割 |
-| -------- | ---- |
-| Logger   | 記録 |
-| Searcher | 解析 |
-| Bridge   | Logger と TraceQL の橋渡し |
+| 層 | 役割 |
+| --- | --- |
+| Logger | 記録 |
+| Validator | 正規化・保護 |
+| Searcher / Analyzer | ログを Event に変換 |
+| Bridge | LogDict を TraceQL Document に変換 |
 | Query Engine | 検索 / 判定 / バッチ処理 |
-| Viewer   | 表示 |
+| Summary Engine | フィルタ後ログの要約 |
+| Viewer | 表示・出力 |
 
 ---
 
@@ -203,13 +311,23 @@ log_viewer（GUI表示）
 ```text
 logs/
 ├ multi_info_logger.py
+├ log_app.py
 ├ log_storage.py
+├ log_validator.py
 ├ log_searcher.py
 ├ log_viewer.py
+├ display_formatter.py
 ├ traceql_bridge.py
+├ summary_bridge.py
 ├ log_types.py
 ├ time_utils.py
 └ log_paths.py
+
+summary_engine/
+├ summary_engine.py
+├ summary_types.py
+├ aggregators/
+└ analyzers/
 
 query_engine/
 ├ adapters/
@@ -221,39 +339,69 @@ query_engine/
 ├ parser.py
 └ models.py
 
-# コアロガー: multi_info_logger.py
-# I/O層: log_storage.py
-# 解析: log_searcher.py
-# TraceQL境界: traceql_bridge.py
-# 検索コア: query_engine/
-# GUI: log_viewer.py
+fv_engine/
+├ fv_parser.py
+├ fv_interpreter.py
+├ fv_runner.py
+├ fv_plan.py
+└ example/
 ```
 
 ---
 
-## 🔎 TraceQL連携ポリシー
+## 📊 Summary Engine
 
-Logger側とTraceQL検索コアは、責務分離のため bridge を介して連携します。
+Summary Engine は、検索・フィルタ後のログを調査しやすい形に要約します。
+
+出力例:
 
 ```text
-logs / viewer
-    ↓
-logs.traceql_bridge
-    ↓
-query_engine
+検索条件
+  条件: type:TRACE_JUMP
+  件数: 4
+
+レベル別件数
+  - INFO: 4
+
+モジュール上位
+  - system_monitor.py: 4
+
+メッセージ上位
+  - system_cpu_percent: 4
 ```
-
-`logs` パッケージ内で `query_engine` を直接 import してよいのは、原則として `logs/traceql_bridge.py` のみです。
-Viewer、表示整形、Logger固有処理を、再利用可能な検索コアから分離するためのルールです。
-
-このリポジトリ内の `query_engine/` は、外部の `traceql_project` とは切り離して扱います。
-たとえば `traceql/logger_window/query_engine/` が変更されても、Logger_project内部の `query_engine/` には自動反映しません。
 
 ---
 
-## 🗄️ 大容量ログとSQLite検索
+## 📄 調査レポート
 
-Ver.0.9.9 では、巨大なJSONLログを扱うための SQLite アダプターを含んでいます。
+調査レポートには、以下の情報が保存されます。
+
+```json
+{
+  "kind": "investigation_report",
+  "format_version": "0.1",
+  "condition_text": "type:TRACE_JUMP",
+  "timezone": "Asia/Tokyo",
+  "log_count": 4,
+  "event_count": 4,
+  "source_files": []
+}
+```
+
+これにより、後から
+
+- どの条件で調査したか
+- どのタイムゾーンで表示したか
+- どのログファイルを対象にしたか
+- 元ログと解析イベントがどう対応しているか
+
+を確認できます。
+
+---
+
+## 🗄️ 大容量ログと SQLite 検索
+
+巨大な JSONL ログを全件メモリに読み込むのが難しい場合、SQLite アダプターを使用できます。
 
 ```python
 from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
@@ -271,12 +419,11 @@ for batch in store.iter_search("context.cpu_percent >= 80", batch_size=1000):
         handle(result.document)
 ```
 
-Logger Viewer から利用する場合は、`logs.traceql_bridge` を通して受け渡す方針です。
+---
 
 ## 🕒 TimeZoneData 更新
 
-IANA tzdata は、サマータイムや政治的なタイムゾーン変更があるたびに不定期で更新されます。
-Logger本体はUTCで記録しますが、Viewerのローカル時刻表示には最新のTimeZoneDataが重要です。
+IANA tzdata は、サマータイムや政治的なタイムゾーン変更により不定期で更新されます。
 
 ```bash
 python -m logs.update_tzdata
@@ -288,146 +435,40 @@ python -m logs.update_tzdata
 logs/.tzdata_ver_reference
 ```
 
-形式:
+形式例:
 
 ```text
 2026:2026.2
 ```
 
-## 📚 詳細ドキュメント
+---
 
-- 設計書 → docs/Design.md
-- 使い方 → docs_jp/How_To_Use_JP.md
+## 📚 ドキュメント
+
+- 設計書 → `docs/Design.md`
+- 使い方 → `docs_jp/How_To_Use_JP.md`
+- English overview → `README.md`
 
 ---
 
 ## 🚀 今後の展開
 
 - リアルタイム監視
-- Webダッシュボード
-- 通知連携（Discord / Slack）
-- AIによる異常検知
-- タイムゾーン対応・管理の強化
-- 追加ストレージバックエンド対応
+- Web ダッシュボード
+- 通知連携
+- 大規模インデックス
+- 追加ストレージバックエンド
+- 調査レポート形式の拡張
 
 ---
 
 ## 📄 ライセンス
 
-- MIT License
+MIT License
 
 ---
 
-## 💬 コンセプト
-
-### これは単なるロガーではありません
-
-#### 👉 プログラムの挙動を理解するための診断システムです
-
-- ログは　**「状態変化＝イベント」**として扱います。
-- ログは　**「文字列」ではなく「構造化されたデータ」**です。
-- ログは　**「記録」だけでなく「分析・可視化」**も行えます。
-- ログは　**「セッション単位」**で追跡できます。
-- ログは　**「発生箇所」を自動で記録します。**
-- ログは　**「リアルタイムで確認」**できます。
-- ログは　**「将来の拡張性」**を考慮して設計されています。
-- ログは　**「開発者の理解を深めるためのツール」**です。
-- ログは　**「プログラムの挙動を可視化するためのイベント」**です。
-
-## なぜこのLoggerを作成したのか
-
-このLoggerは、通常の運用において発生しがちな  
-**「静かに壊れる（Silent Failure）」問題を排除すること**を目的として設計されています。
-
-一般的なログでは、エラーが明示的に出ない限り、問題の発見が遅れたり、原因の追跡が困難になるケースがあります。  
-本Loggerではその課題を解決するために、**状態や意図を明示的に記録する設計**を採用しています。  
-
-そのため  
-
-特に、以下の形式で情報を記録できるようにしています。
-
-```python
-context: dict[str, Any]  # {変数 / プロパティ : 意図した値}
-```
-
-この設計により、
-
-- 「何をしようとしていたのか」
-- 「どの値を前提としていたのか」
-- 「どこでズレが発生したのか」
-
-を、ログから直接読み取ることが可能になります。  
-
-また、記述のしやすさも重視し、開発者が自然にこの情報を残せるような構造にしています。
-
----
-
-このLoggerは単なる記録ツールではなく、  
-**「状態の透明性」を担保し、問題を早期に検知するための設計ツール**です。
-
-## contextの使用例
-
-以下は、context を使用してログの情報量を高める例です。
-
-コード例
-
-```python
-logger.info(
-    "ユーザーログイン処理",
-    context={
-        "user_id": user_id,
-        "想定状態": "認証成功",
-        "実際状態": auth_result,
-    }
-)
-```
-
-## 出力例
-
-```text
-{
-  "time": "2026-04-18T10:15:30Z",
-  "type": "INFO",
-  "message": "ユーザーログイン処理",
-  "context": {
-    "user_id": "A12345",
-    "想定状態": "認証成功",
-    "実際状態": "失敗"
-  }
-}
-```
-
----
-
-## 異常検知例
-
-```python
-logger.warning(
-    "Unexpected state detected",
-    context={
-        "state": current_state,
-        "expected": "READY",
-        "next_action": "recovery triggered"
-    }
-)
-```
-
-### 💡 なぜこれが重要なのか
-
-単に「失敗した」という結果だけでなく、
-
-- 何を想定していたのか
-- 実際に何が起きたのか
-- どのデータが原因だったのか
-
-を、ログから直接把握することができます。
-
-これにより、デバッグのスピードが大幅に向上し、  
-「静かに壊れる（Silent Failure）」状態を見逃さない設計になります。
-
----
-
-### 🤖 謝辞
+## 🤖 謝辞
 
 本プロジェクトは、ChatGPT（OpenAI）の支援を受けて開発されました。  
 ここに深く感謝の意を表します。
@@ -436,7 +477,6 @@ logger.warning(
 
 ---
 
-### ⭐ サポート
+## ⭐ サポート
 
-本プロジェクトが役に立ったと感じていただけた場合は、  
-GitHubで⭐を付けていただけると励みになります！
+本プロジェクトが役に立ったと感じていただけた場合は、GitHubで ⭐ を付けていただけると励みになります。

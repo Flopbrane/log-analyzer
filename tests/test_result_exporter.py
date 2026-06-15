@@ -160,5 +160,8 @@ def test_export_investigation_report_json(tmp_path: Path) -> None:
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["report"]["kind"] == "investigation_report"
+    assert payload["report"]["format_version"] == "0.1"
     assert payload["report"]["timezone"] == "Asia/Tokyo"
+    assert payload["report"]["log_count"] == 1
+    assert payload["report"]["event_count"] == 1
     assert payload["events"][0]["raw"]["trace_id"] == "trace-1"
