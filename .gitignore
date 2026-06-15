@@ -38,6 +38,8 @@ fv_example/*.json
 contents_class_def/
 .ruff_cache/
 .pytest_cache/
+.mypy_cache/
+.tools/
 # =========================
 # 🪟 OS関連
 # =========================

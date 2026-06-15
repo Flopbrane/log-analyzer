@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from logs.display_formatter import LogRenderer
-from logs.log_types import LogDict
+from logs.log_types import Event, LogDict
 from logs.log_viewer import LogViewer
+import logs.log_viewer as log_viewer_module
 
 
 class _DummyLogger:
@@ -52,6 +53,17 @@ class _DummyTree:
         return str(y)
 
 
+class _DummyCombo:
+    def __init__(self) -> None:
+        self.values: list[str] = []
+
+    def __setitem__(self, key: str, value: list[str]) -> None:
+        if key == "values":
+            self.values = value
+            return
+        raise KeyError(key)
+
+
 @dataclass
 class _DummyEvent:
     y: int
@@ -80,6 +92,20 @@ def _sample_logs() -> list[LogDict]:
     ]
 
 
+def _replacement_logs() -> list[LogDict]:
+    return [
+        {
+            "level": "WARNING",
+            "time": "2026-04-24T01:00:00+00:00",
+            "trace_id": "single-trace",
+            "where": {"module": "system_monitor", "file": "system_monitor.py", "function": "_log_gpu", "line": 91},
+            "what": {"message": "system_gpu_status"},
+            "context": {"gpu_status": "stable"},
+            "output": "file",
+        },
+    ]
+
+
 def _build_viewer() -> LogViewer:
     viewer = LogViewer.__new__(LogViewer)
     viewer.logger = _DummyLogger()
@@ -89,9 +115,12 @@ def _build_viewer() -> LogViewer:
     viewer.search_var = _DummyVar("")
     viewer.aggregate_result_var = _DummyVar("")
     viewer.tree = _DummyTree()
+    viewer.trace_dropdown = _DummyCombo()
+    viewer.type_dropdown = _DummyCombo()
     viewer.raw_rows = []
     viewer.filtered_rows = []
     viewer.display_rows = []
+    viewer._event_cache = None
     return viewer
 
 
@@ -146,17 +175,17 @@ def test_level_error_search_keeps_analysis_events_from_error_logs() -> None:
     viewer.apply_filter()
 
     assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
-        "test_error",
-        "test_error",
+        "ERROR",
+        "ERROR",
         "TRACE_JUMP",
         "REPEAT_ERROR",
     ]
 
 
-def test_message_can_be_used_as_type_query() -> None:
+def test_non_type_message_falls_back_to_level() -> None:
     viewer = _build_viewer()
     viewer._set_raw_rows(_sample_logs())
-    viewer.search_var.set("type:system_cpu_percent")
+    viewer.search_var.set("type:INFO")
 
     viewer.apply_filter()
 
@@ -166,9 +195,68 @@ def test_message_can_be_used_as_type_query() -> None:
         "system_cpu_percent",
     ]
     assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
-        "system_cpu_percent",
-        "system_cpu_percent",
+        "INFO",
+        "INFO",
     ]
 
     detail_text = LogRenderer().build_summary(viewer.display_rows[0], viewer.current_tz)
-    assert "Type  : system_cpu_percent" in detail_text
+    assert "Type  : INFO" in detail_text
+
+
+def test_message_query_does_not_match_type_when_message_is_not_enum() -> None:
+    viewer = _build_viewer()
+    viewer._set_raw_rows(_sample_logs())
+    viewer.search_var.set("type:system_cpu_percent")
+
+    viewer.apply_filter()
+
+    assert viewer.display_rows == []
+
+
+def test_event_cache_reuses_summarize_until_raw_rows_change(monkeypatch: Any) -> None:
+    viewer = _build_viewer()
+    viewer._set_raw_rows(_sample_logs())
+
+    call_count = 0
+    real_summarize = log_viewer_module.summarize
+
+    def _counting_summarize(logs: list[LogDict]) -> list[Event]:
+        nonlocal call_count
+        call_count += 1
+        return real_summarize(logs)
+
+    monkeypatch.setattr(log_viewer_module, "summarize", _counting_summarize)
+
+    viewer.apply_filter()
+    viewer.update_filters()
+
+    assert call_count == 1
+
+    viewer._set_raw_rows(_sample_logs())
+    viewer.apply_filter()
+
+    assert call_count == 2
+
+
+def test_reloading_logs_clears_cached_events_from_previous_dataset() -> None:
+    viewer = _build_viewer()
+    viewer._set_raw_rows(_sample_logs())
+    viewer.apply_filter()
+
+    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
+        "INFO",
+        "INFO",
+        "TRACE_JUMP",
+    ]
+
+    viewer._set_raw_rows(_replacement_logs())
+    viewer.apply_filter()
+
+    assert viewer._event_cache is not None
+    assert [viewer._get_event_display_type(row) for row in viewer.display_rows] == [
+        "WARNING",
+    ]
+    assert [viewer._get_event_display_type(row) for row in viewer._event_cache] == [
+        "WARNING",
+    ]
+    assert all(viewer._get_event_display_type(row) != "TRACE_JUMP" for row in viewer._event_cache)

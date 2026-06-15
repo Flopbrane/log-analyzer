@@ -37,7 +37,7 @@ from logs.log_multi_select import LogFileSelector
 from logs.log_paths import LOGS_DIR
 from logs.log_searcher import (
     collect_logs,
-    flatten_message_text,
+    normalize_message_type_name,
     summarize,
 )
 from logs.log_storage import load_log
@@ -111,6 +111,8 @@ class LogViewer:
         self.filtered_rows: list[LogDict] = []
         # ----Treeview表示用Event (display)----
         self.display_rows: list[Event] = []
+        # ----raw_rows 全体に対する summarize キャッシュ----
+        self._event_cache: list[Event] | None = None
 
         # ----- シングルクリックとダブルクリックの区別用 -----
         self._single_click_after_id: str | None = None
@@ -988,6 +990,15 @@ class LogViewer:
             if log is not None:
                 safe_logs.append(log)
 
+        self.logger.debug(
+            "reload_log prepared",
+            context={
+                "path": str(path),
+                "raw_count": len(raw_logs),
+                "valid_count": len(safe_logs),
+            },
+        )
+
         # ③ Viewerにセット
         self._set_raw_rows(safe_logs)
 
@@ -1009,6 +1020,14 @@ class LogViewer:
         # 🔹 searcher経由で取得（統一）
         logs: list[LogDict] = collect_logs([Path(file_path_str)])
 
+        self.logger.debug(
+            "open_log_file collected",
+            context={
+                "path": file_path_str,
+                "log_count": len(logs),
+            },
+        )
+
         self._set_raw_rows(logs)
         self.last_log_paths = [Path(file_path_str)]
         self.update_filters()
@@ -1024,6 +1043,15 @@ class LogViewer:
 
         # 🔹 データ取得はsearcherに任せる
         logs: list[LogDict] = collect_logs(paths)
+
+        self.logger.debug(
+            "open_logs collected",
+            context={
+                "path_count": len(paths),
+                "log_count": len(logs),
+                "paths": [str(path) for path in paths],
+            },
+        )
 
         # 🔹 Viewerは表示だけ
         self._set_raw_rows(logs)
@@ -1046,10 +1074,11 @@ class LogViewer:
                 for candidate in self._get_log_type_candidates(row)
             }
         )
+        cached_events: list[Event] = self._get_event_cache()
         event_types: list[str] = sorted(
             {
                 candidate
-                for event in summarize(self.raw_rows)
+                for event in cached_events
                 for candidate in self._get_event_type_candidates(event)
             }
         )
@@ -1094,9 +1123,11 @@ class LogViewer:
     ) -> set[str]:
         """LogDictが type 候補として持つ値を返す。"""
         candidates: set[str] = {self._get_log_type(row)}
-        message_text: str = flatten_message_text(row.get("what", {}).get("message", ""))
-        if message_text:
-            candidates.add(message_text)
+        message_type: str | None = normalize_message_type_name(
+            row.get("what", {}).get("message", "")
+        )
+        if message_type is not None:
+            candidates.add(message_type)
         return candidates
 
     def _get_event_display_type(
@@ -1106,8 +1137,10 @@ class LogViewer:
         """TreeviewのType列に表示する種別を取得する。"""
         if row.type is not None:
             return row.type.name
-        message_text: str = flatten_message_text(row.raw.get("what", {}).get("message", ""))
-        return message_text or row.level.name
+        message_type: str | None = normalize_message_type_name(
+            row.raw.get("what", {}).get("message", "")
+        )
+        return message_type or row.level.name
 
     def _get_event_type_candidates(
         self,
@@ -1115,9 +1148,11 @@ class LogViewer:
     ) -> set[str]:
         """Eventが type 条件で一致できる候補を返す。"""
         candidates: set[str] = {self._get_event_display_type(row)}
-        message_text: str = flatten_message_text(row.raw.get("what", {}).get("message", ""))
-        if row.type is None and message_text:
-            candidates.add(message_text)
+        message_type: str | None = normalize_message_type_name(
+            row.raw.get("what", {}).get("message", "")
+        )
+        if row.type is None and message_type is not None:
+            candidates.add(message_type)
         return candidates
 
     def _set_raw_rows(
@@ -1125,9 +1160,43 @@ class LogViewer:
         logs: list[LogDict],
     ) -> None:
         """元ログを差し替え、分析キャッシュを無効化する。"""
+        previous_raw_count: int = len(self.raw_rows)
+        previous_cache_count: int = len(self._event_cache) if self._event_cache is not None else 0
         self.raw_rows = logs
         self.filtered_rows = []
         self.display_rows = []
+        self._event_cache = None
+        self.logger.debug(
+            "raw_rows replaced and caches cleared",
+            context={
+                "previous_raw_count": previous_raw_count,
+                "new_raw_count": len(logs),
+                "cleared_filtered_rows": True,
+                "cleared_display_rows": True,
+                "cleared_event_cache_count": previous_cache_count,
+            },
+        )
+
+    def _get_event_cache(self) -> list[Event]:
+        """raw_rows 全体に対する summarize 結果を再利用する。"""
+        if self._event_cache is None:
+            self._event_cache = summarize(self.raw_rows)
+            self.logger.debug(
+                "event cache rebuilt",
+                context={
+                    "raw_count": len(self.raw_rows),
+                    "event_count": len(self._event_cache),
+                },
+            )
+        else:
+            self.logger.debug(
+                "event cache reused",
+                context={
+                    "raw_count": len(self.raw_rows),
+                    "event_count": len(self._event_cache),
+                },
+            )
+        return self._event_cache
 
     def _filter_event_rows(
         self,
@@ -1285,7 +1354,7 @@ class LogViewer:
         # 🔹 画面クリア
         self.tree.delete(*self.tree.get_children())
 
-        event_rows: list[Event] = summarize(self.raw_rows)
+        event_rows: list[Event] = self._get_event_cache()
         self.display_rows = self._filter_event_rows(
             event_rows,
             trace_filter,

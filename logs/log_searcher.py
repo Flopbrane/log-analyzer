@@ -174,6 +174,39 @@ def flatten_message_text(value: object) -> str:
         ).strip()
     return str(value).strip()
 
+
+def normalize_message_type_name(value: object) -> str | None:
+    """message が EventType / LogLevel に対応する場合だけ正規化名を返す。"""
+    message_text: str = flatten_message_text(value)
+    if not message_text:
+        return None
+
+    normalized: str = message_text.strip().lower()
+    event_type_map: dict[str, str] = {
+        event_type.name.lower(): event_type.name
+        for event_type in EventType
+    }
+    event_type_map.update(
+        {
+            event_type.value.lower(): event_type.name
+            for event_type in EventType
+        }
+    )
+    if normalized in event_type_map:
+        return event_type_map[normalized]
+
+    log_level_map: dict[str, str] = {
+        log_level.name.lower(): log_level.name
+        for log_level in LogLevel
+    }
+    log_level_map.update(
+        {
+            str(log_level.value).lower(): log_level.name
+            for log_level in LogLevel
+        }
+    )
+    return log_level_map.get(normalized)
+
 # =========================
 # 検出系（Log → Event）
 # =========================
