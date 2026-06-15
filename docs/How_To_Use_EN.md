@@ -1,24 +1,82 @@
-# Logging System — How to Use
+# Info Logger — How to Use
+
+> Target version: **v1.0.0-rc1**  
+> This document describes the current Logger_Project / Info Logger viewer, including Event-based display, TraceQL search, FV recipes, summary output, and investigation report export.
 
 ---
 
-## Version Scope
+## 1. What Info Logger Does
 
-This document describes Logger_project Ver.0.9.9.
+Info Logger is not only a logger.
 
-The local `query_engine/` directory is the TraceQL/query core bundled with this project.
-It is independent from any external `traceql_project` copy.
-Logger/UI code should access it through `logs.traceql_bridge`.
+It is a diagnostic pipeline:
+
+```text
+Logger
+  ↓
+JSON Lines logs
+  ↓
+LogDict validation
+  ↓
+Event analysis
+  ↓
+Viewer display
+  ↓
+Search / Summary / Export
+```
+
+The important idea is:
+
+```text
+LogDict = record
+Event   = meaning
+```
+
+A raw log is a structured record.  
+An Event is the result of interpreting that record.
 
 ---
 
-## 🎯 Basic Flow
+## 2. Core Concepts
 
-Logger → Logging → Analysis → Visualization
+### 2.1 `level`, `type`, and `message`
+
+The Viewer intentionally separates these three values.
+
+| Field | Meaning | Example |
+| --- | --- | --- |
+| `level` | Original log severity | `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `type` | Event meaning added by analysis | `TRACE_JUMP`, `REBOOT`, `REPEAT_ERROR` |
+| `message` | What happened | `system_cpu_percent`, `trace_id changed` |
+
+Normal logs usually have:
+
+```text
+type  = None
+level = INFO / WARNING / ERROR / CRITICAL
+```
+
+Analysis events usually have:
+
+```text
+type  = TRACE_JUMP / REBOOT / REPEAT_ERROR
+level = original log level
+```
+
+The Viewer Type column follows this rule:
+
+```text
+if Event.type exists:
+    show Event.type
+else:
+    show Event.level
+```
+
+So a normal INFO log displays `INFO`, while a detected trace jump displays `TRACE_JUMP`.
 
 ---
 
-## 🟢 1. Get Logger
+## 3. Get the Logger
 
 ```python
 from logs.log_app import get_logger
@@ -26,26 +84,40 @@ from logs.log_app import get_logger
 logger = get_logger()
 ```
 
-> 💡 For type-safe usage (optional), see Design.md
-
-## 🟢 2. Logging
-
-### 🔵 Basic
+Do not instantiate `AppLogger` directly.
 
 ```python
-logger.info("Process started")
+# Do not do this
+AppLogger()
 ```
 
-### 🔵 With Context
+The logger manages:
+
+- `trace_id`
+- timestamp normalization to UTC
+- source location
+- JSON Lines output
+
+---
+
+## 4. Basic Logging
+
+### Simple log
+
+```python
+logger.info("Application started")
+```
+
+### Log with context
 
 ```python
 logger.warning(
     "clock_jump_detected",
-    context={"diff": 180}
+    context={"diff": 180},
 )
 ```
 
-### 🔵 With Metadata
+### Log with intent and actual state
 
 ```python
 logger.info(
@@ -54,188 +126,240 @@ logger.info(
         "user_id": user_id,
         "expected_status": "authenticated",
         "actual_status": auth_result,
-    }
+    },
 )
 ```
+
+### Error log
 
 ```python
 logger.error(
     "database_error",
     action="connect",
     status="failed",
-    category="db"
+    category="db",
 )
 ```
 
-## 🟢 3. Log File
+---
 
-### 🔵 Structure
+## 5. Log File Format
+
+Info Logger stores logs as JSON Lines.
 
 ```text
-logs/
-  └ app_YYYY-MM-DD.log
+one line = one JSON object
 ```
 
-### 🔵 Log Format
+A typical validated log looks like this:
 
-- One line = one JSON record (JSON Lines)
-- Input datetime (JST or local) is normalized to UTC
-- All storage and analysis are performed in UTC
-- Local time conversion is handled only in the Viewer
-
-### 🟢 4. Log Analysis
-
-#### basic
-
-```python
-from logs.log_searcher import search_logs
-from pathlib import Path
-
-events = search_logs(Path("logs"))
-
-for e in events:
-    print(e)
+```json
+{
+  "level": "INFO",
+  "time": "2026-06-15T05:21:33+00:00",
+  "trace_id": "ecdab2f96d1149639791c4c3cdd0178c",
+  "where": {
+    "file": "logs/log_viewer.py",
+    "line": 993,
+    "function": "reload_log"
+  },
+  "what": {
+    "message": "reload_log prepared"
+  },
+  "context": {
+    "raw_count": 12,
+    "valid_count": 12
+  },
+  "output": "both"
+}
 ```
 
-#### 🔹 Advanced Usage
+Internally, time is stored and analyzed in UTC.  
+The Viewer converts time only for display.
 
-For internal architecture and detailed flow,  
-please refer to Design.md
+---
 
-### 🟢 5. Run Viewer
+## 6. Run the Viewer
 
 ```bash
 python -m logs.log_viewer
 ```
 
-👉 Opens GUI for real-time log inspection
+The Viewer opens a Tkinter GUI.
 
-When the Viewer builds TimeZoneData, it may show:
+If TimeZoneData is being built or checked, the Viewer may show:
 
 ```text
 現在、最新版のTimeZoneDataに書き換え中です。
 ```
 
-This means the Viewer is checking/updating the Python `tzdata` package used for local-time display.
+This means local-time display data is being prepared.
 
-#### 🟢 Display Fields
+---
 
-| Field    | Description        |
-| -------- | ------------------ |
-| time     | Timestamp          |
-| type     | Event type         |
-| trace_id | Session identifier |
-| message  | Content            |
+## 7. Viewer Layout
 
-#### 🟢 Interaction
+The main table contains:
 
-Click a row → View detailed JSON
+| Column | Meaning |
+| --- | --- |
+| `type` | Display type: Event type if available, otherwise log level |
+| `time` | Local time in the selected timezone |
+| `trace_id` | Execution/session identifier |
+| `message` | Flattened message text |
 
-#### 🔍 Search Text Box
-
-The Viewer search text box supports:
-
-- Basic keyword search,
-- Exact phrase search,
-- Date search,
-- Time search,
-- Date/time range search,
-- Field-specific search,
-- Regular expression search,
-- Similarity search,
-- Numeric comparison,
-- Boolean expressions,
-- Ignore rules,
-- Sort / top-N search,
-- Aggregate/statistical search.
-
-##### ✅ Basic Search
-
-Type any keyword to search across visible log fields such as `message`, `level`, `trace_id`, `where`, and `context`.
+The detail window shows:
 
 ```text
-test_error
-system_cpu_percent
-run_test
+Type  : TRACE_JUMP
+Level : INFO
+Time(Local:Asia/Tokyo | JST) : ...
+Time(UTC)                    : ...
+
+=== MESSAGE ===
+...
+
+--- where ---
+File :
+Line :
+Func :
+
+--- Event ---
+from :
+to   :
+
+--- Context ---
+...
 ```
 
-##### ✅ Date Search
+This is intentionally more detailed than a normal log viewer.
 
-Search logs by date.
+---
+
+## 8. Loading Logs
+
+The Viewer supports:
+
+- latest log auto-load
+- opening one log file
+- opening multiple log files
+- reloading previous log paths from Viewer config
+
+When new logs are loaded, the Viewer replaces the old dataset and clears its Event cache:
+
+```text
+raw_rows      = new validated logs
+filtered_rows = []
+display_rows  = []
+_event_cache  = None
+```
+
+The Event cache is rebuilt from the new `raw_rows` only when needed.
+
+---
+
+## 9. Search Basics
+
+The search box supports normal keyword search and TraceQL-style field search.
+
+### Keyword search
+
+```text
+cpu
+system_cpu_percent
+database_error
+```
+
+### Date search
 
 ```text
 2026-04-23
 ```
 
-This matches logs displayed on that date in the Viewer timezone.
-
-##### ✅ Time Search
-
-Search logs by hour and minute.
+### Time search
 
 ```text
 10:15
-10:16
 ```
 
-##### ✅ Date + Time Search
-
-Search logs that match a specific date/time prefix.
+### Date/time search
 
 ```text
-2026-04-24 10:16
+2026-04-23 15:00
 ```
 
-##### ✅ Date / Time Range Search
+### Range search
 
-Use `..` as the standard range separator.
+Use `..` as the recommended range separator.
 
 ```text
 2026-04-23..2026-04-24
-2026-04-23 14:49..2026-04-23 14:49
 2026-04-23 15:00:31..2026-04-23 15:00:37
 ```
 
-The Viewer also supports the older compatible format using ` - ` with spaces.
+Compatible older format:
 
 ```text
 2026-04-23 - 2026-04-24
 ```
 
-> Recommended format: `start..end`  
-> Compatible format: `start - end`
+Because dates contain hyphens, prefer `..`.
 
-##### ✅ Field-Specific Search
+---
 
-You can search by specific log fields using `key:value`.
+## 10. Field Search
 
 ```text
 level:ERROR
 level:WARNING
-message:test_error
 message:system_cpu_percent
 function:run_test
 file:system_monitor.py
 context:cpu_percent
-context:gpu_mem_total_mb
 trace_id:fc036f388b7542c48117d55c8ec1728c
 ```
 
-Supported field aliases include:
+Common aliases:
 
 | Alias | Target |
-| ----- | ------ |
+| --- | --- |
 | `level` | `level` |
-| `message`, `msg` | `what.message` |
+| `type` | Viewer/Event display type |
+| `message`, `msg` | `what.message` / Event message |
 | `function`, `func` | `where.function` |
 | `file` | `where.file` |
 | `trace`, `trace_id` | `trace_id` |
-| `output` | `output` |
 | `context` | `context` |
+| `output` | `output` |
 
-##### ✅ Query Error Suggestions
+---
 
-Incomplete or invalid TraceQL input is reported as a structured query error instead of crashing the Viewer.
+## 11. Event Type Search
+
+This Viewer is Event-aware.
+
+You can search analysis events directly:
+
+```text
+type:TRACE_JUMP
+type:REBOOT
+type:REPEAT_ERROR
+```
+
+This is different from normal log-level search.
+
+```text
+level:ERROR
+```
+
+Use `type:` when you want analysis results.  
+Use `level:` when you want original log severity.
+
+---
+
+## 12. Query Error Reports
+
+Incomplete or invalid TraceQL input does not crash the Viewer.
 
 Example:
 
@@ -243,7 +367,7 @@ Example:
 level:
 ```
 
-The detail view can show:
+The detail view can show a structured report:
 
 ```text
 QUERY ERROR
@@ -260,49 +384,39 @@ Did you mean:
 - level:INFO
 ```
 
-Typo correction is dictionary-based and does not require AI.
+Typo suggestions are dictionary-based and do not require AI.
 
-```text
-levle:ERROR
-```
+---
 
-can suggest:
+## 13. Boolean / Exclude / Phrase Search
 
-```text
-level:ERROR
-```
-
-##### ✅ Exclude Search
-
-Prefix a term with `-` to hide logs that contain that term.
+### Exclude search
 
 ```text
 cpu -gpu
 message:system -gpu
 ```
 
-##### ✅ Exact Phrase Search
-
-Wrap text in double quotes to search for that exact phrase as one continuous string.
+### Exact phrase search
 
 ```text
 "invalid log: missing trace_id"
 "system cpu"
 ```
 
-##### ✅ Boolean Search
-
-Multiple terms are treated as `AND`. You can also use explicit `AND`, `OR`, and parentheses.
+### Boolean search
 
 ```text
-level:WARNING message:system_cpu_percent
 level:ERROR OR level:CRITICAL
 (level:ERROR OR level:WARNING) -debug
+level:WARNING message:system_cpu_percent
 ```
 
-##### ✅ Numeric Comparison Search
+---
 
-Use comparison operators for numeric fields, especially values inside `context`.
+## 14. Numeric Comparison
+
+Numeric fields in context can be compared.
 
 ```text
 context.cpu_percent >=20
@@ -316,18 +430,9 @@ Supported operators:
 < <= > >= == !=
 ```
 
-##### ✅ Ignore Rules
+---
 
-Use `(ignore: ...)` to remove logs matching an ignore condition after the main search has selected candidates.
-
-```text
-cpu (ignore: context.cpu_percent <80)
-system (ignore: gpu)
-```
-
-##### ✅ Regular Expression Search
-
-Use `regex` for regular expression matching. You can search the whole flattened log, or one field.
+## 15. Regular Expression Search
 
 ```text
 regex "^system_.*"
@@ -337,9 +442,9 @@ regex context "gpu_.*_mb"
 
 Invalid regular expressions simply match no rows.
 
-##### ✅ Similarity Search
+---
 
-Use `similar` to find logs whose text is close to the phrase, even when the words are not an exact keyword match.
+## 16. Similarity Search
 
 ```text
 similar "GPU memory pressure"
@@ -347,13 +452,12 @@ similar "reboot or clock jump symptoms"
 similar "GPU memory pressure" 0.12
 ```
 
-This is an offline approximate search based on lightweight TF-IDF-style text features and character n-grams. It does not require an API key. Matching logs are displayed in similarity-score order unless you also specify an explicit `sort by`.
+The current implementation is offline and lightweight.  
+It does not require an API key.
 
-The optional number after the phrase is the similarity threshold. Higher values are stricter.
+---
 
-##### ✅ Sort / Top-N Search
-
-Use `sort by` to sort matching logs, or `top N by` to show only the highest N rows for a field.
+## 17. Sort and Top-N Search
 
 ```text
 level:error sort by time desc
@@ -362,11 +466,9 @@ top 3 by context.cpu_percent
 top 10 by time desc where level:error
 ```
 
-If a log does not have the sort field, it is placed after logs that do.
+---
 
-##### ✅ Aggregate / Statistical Search
-
-Aggregate search filters the log list to the rows used for the calculation, then displays the result next to the search box.
+## 18. Aggregate / Statistical Search
 
 Format:
 
@@ -374,9 +476,21 @@ Format:
 function field where condition
 ```
 
-`where condition` is optional. It can use the same search syntax as normal searches, including date ranges and comparisons.
+Examples:
 
-Supported aggregate functions:
+```text
+count * where level:error
+count * where 2026-04-23..2026-04-23
+max context.cpu_percent
+min context.cpu_percent where context.cpu_percent >=20
+avg context.cpu_percent
+median context.cpu_percent
+mode level
+group by level count *
+group by message avg context.cpu_percent
+```
+
+Supported functions:
 
 ```text
 count
@@ -389,128 +503,160 @@ median
 mode
 ```
 
-Examples:
+---
+
+## 19. FV Recipes
+
+FV recipes are saved search/report instructions.
+
+A recipe can define:
 
 ```text
-count * where level:error
-count * where 2026-04-23..2026-04-23
-max context.cpu_percent
-max context.cpu_percent where 2026-04-23..2026-04-23
-min context.cpu_percent where context.cpu_percent >=20
-avg context.cpu_percent
-ave context.cpu_percent
-mean context.cpu_percent
-median context.cpu_percent
-mode level
-group by level count *
-group by message avg context.cpu_percent
+TITLE
+QUERY
+SUMMARY
+EXPORT
+OUTPUT
 ```
 
-Notes:
-
-- `count *` counts matching logs.
-- `count field_name` counts values found in that field.
-- `max`, `min`, `avg`, `ave`, `mean`, and `median` require numeric values.
-- `mode` can be used with text fields such as `level`.
-- `group by field function target` calculates aggregate values per group.
-- When a field does not exist in a log, that log is not included in the aggregate result for that field.
-
-##### ✅ Search Examples
-
-| Query | Meaning |
-| ----- | ------- |
-| `2026-04-23` | Logs on 2026-04-23 |
-| `2026-04-23..2026-04-24` | Logs from 2026-04-23 to 2026-04-24 |
-| `2026-04-23 15:00:31..2026-04-23 15:00:37` | Logs within a precise time range |
-| `10:15` | Logs whose displayed local time starts with 10:15 |
-| `level:ERROR` | Error logs only |
-| `message:test_error` | Logs whose message contains `test_error` |
-| `context:cpu_percent` | Logs that contain `cpu_percent` in context |
-| `trace_id:...` | Logs for a specific session |
-| `cpu -gpu` | Logs that contain `cpu` but do not contain `gpu` |
-| `"invalid log: missing trace_id"` | Logs that contain that exact phrase |
-| `regex message "^system_.*_status$"` | Logs whose message matches the regular expression |
-| `similar "GPU memory pressure"` | Logs that are approximately similar to that phrase |
-| `context.cpu_percent >=20` | Logs whose CPU percent is 20 or higher |
-| `level:ERROR OR level:CRITICAL` | Error or critical logs |
-| `top 3 by context.cpu_percent` | Top 3 logs by CPU percent |
-| `count * where level:error` | Count error logs and show those rows |
-| `avg context.cpu_percent` | Average CPU percent and show logs that contain that field |
-| `group by level count *` | Count logs per level |
-
-##### ⚠️ Range Separator Notes
-
-Because dates already contain hyphens, avoid using a plain `-` without spaces.
+Example concept:
 
 ```text
-2026-04-23-2026-04-24  # Not recommended
+TITLE: Trace Jump Analysis
+QUERY: type:TRACE_JUMP
+SUMMARY: on
+EXPORT: json
+OUTPUT: result_trace_jump.json
 ```
 
-Use this instead:
+When the Viewer opens an FV recipe:
+
+1. The recipe is parsed.
+2. An execution plan is built.
+3. The query is copied into the search box.
+4. The Viewer applies the filter.
+5. If the query uses Event type search, the Viewer builds the result from `display_rows`.
+6. Summary and export are generated.
+
+This is important because `TRACE_JUMP`, `REBOOT`, and `REPEAT_ERROR` are analysis events, not raw log strings.
+
+---
+
+## 20. Summary Engine
+
+The summary engine creates a `SummaryResult`.
+
+It can include:
+
+- total count
+- condition text
+- level counts
+- module ranking
+- message ranking
+- numeric context statistics
+- insights
+- formatted summary text
+
+Example summary:
 
 ```text
-2026-04-23..2026-04-24
+Search condition
+  Condition: type:TRACE_JUMP
+  Count: 4
+
+Level counts
+  - INFO: 4
+
+Top modules
+  - system_monitor.py: 4
+
+Top messages
+  - system_cpu_percent: 4
 ```
 
-#### ⚠️ Important Notes
+---
 
-❌ Do NOT instantiate logger directly  
+## 21. Export
+
+The Viewer supports:
+
+- filtered Event CSV
+- JSON bundle
+- investigation report JSON
+- summary CSV
+- summary JSON
+
+### JSON bundle structure
+
+```json
+{
+  "exported_at": "...",
+  "logs": [],
+  "events": [],
+  "summary": {},
+  "report": null
+}
+```
+
+### Investigation report structure
+
+```json
+{
+  "exported_at": "...",
+  "logs": [],
+  "events": [],
+  "summary": {},
+  "report": {
+    "kind": "investigation_report",
+    "format_version": "0.1",
+    "condition_text": "type:TRACE_JUMP",
+    "timezone": "Asia/Tokyo",
+    "log_count": 4,
+    "event_count": 4,
+    "source_files": []
+  }
+}
+```
+
+---
+
+## 22. Large Logs and SQLite
+
+For large logs, a SQLite document adapter is available through the query engine.
 
 ```python
-AppLogger()  # NG
+from query_engine.adapters.sqlite_adapter import SQLiteDocumentStore
+
+with SQLiteDocumentStore("logs.sqlite") as store:
+    store.add_documents(documents)
+    results = store.search("level:ERROR", limit=100)
 ```
 
-✔ Always use
+For large result sets:
 
 ```python
-logger = get_logger()
+for batch in store.iter_search("context.cpu_percent >= 80", batch_size=1000):
+    for result in batch.results:
+        handle(result.document)
 ```
 
-❌ Do NOT create trace_id manually  
-trace_id is automatically generated per session  
+When using this from the Logger side, route data through `logs.traceql_bridge`.
 
-✔ Let Logger handle everything
+---
 
-- where → auto-detected
-- trace_id → auto-generated
-- datetime → normalized to UTC
-
-### 💡 Common Use Cases
-
-Debugging
-
-```python
-logger.debug("Check value", context={"value": x})
-```
-
-Error Detection
-
-```python
-logger.error("Process failed", status="failed")
-```
-
-System Monitoring
-
-```python
-logger.info("cpu_usage", context={"cpu": 30})
-```
-
-### TimeZoneData Update
-
-IANA timezone data is released irregularly when timezone or daylight-saving rules change.
-To explicitly check and update the local Python `tzdata` package:
+## 23. TimeZoneData Update
 
 ```bash
 python -m logs.update_tzdata
 ```
 
-The reference file is:
+Reference file:
 
 ```text
 logs/.tzdata_ver_reference
 ```
 
-It stores `year:tzdata-version`, for example:
+Example:
 
 ```text
 2026:2026.2
@@ -518,14 +664,32 @@ It stores `year:tzdata-version`, for example:
 
 ---
 
-### 🚀 Advanced Ideas
+## 24. Recommended Test Checklist
 
-- Event filtering
-- Trace-based analysis
-- Graph visualization
+Before tagging a release:
 
-### 💬 Summary
+```text
+□ Open one log file
+□ Open multiple log files
+□ Load another log and confirm old cache is cleared
+□ Search type:TRACE_JUMP
+□ Search type:REBOOT
+□ Search level:ERROR
+□ Open detail window
+□ Export JSON bundle
+□ Export investigation report
+□ Run FV recipe
+□ Confirm SummaryWindow opens
+```
 
-This system is not just a logger.
+---
 
-👉 It is a state monitoring and analysis tool.
+## 25. Summary
+
+Info Logger is a structured logging, Event analysis, and diagnostic Viewer system.
+
+It is designed to make program behavior visible:
+
+```text
+record → analyze → inspect → summarize → report
+```
