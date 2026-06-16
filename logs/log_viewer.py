@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tkinter as tk
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Final, TypeGuard, cast
@@ -157,8 +157,6 @@ class LogViewer:
         self.area_var = tk.StringVar()
         # city
         self.tz_var = tk.StringVar()
-        # debag用
-        print("DEBUG filtered_rows exists")
         # ===== 全体UI構築 =====
         self._build_ui()
 
@@ -194,7 +192,6 @@ class LogViewer:
                 loaded_configured_logs = True
 
         latest_log: Path | None = get_latest_log_file(self.log_dir)
-        print(f"DEBUG latest_log: {latest_log}")
         if not loaded_configured_logs and initial_log_path is None and latest_log is not None:
             initial_log_path = latest_log
 
@@ -590,7 +587,7 @@ class LogViewer:
         self.open_logs_button.pack(side=tk.LEFT, padx=8)
         self.reset_filters_button = tk.Button(top_frame, text=self._t("button_reset_filters"), command=self.reset_filters)
         self.reset_filters_button.pack(side=tk.LEFT)
-        #=====Timezone Dropdown=====
+        # =====Timezone Dropdown=====
         self._build_timezone_dropdown(top_frame)
         # =========================
         # 🔹 フィルタ
@@ -772,7 +769,6 @@ class LogViewer:
         self.tree.bind("<ButtonRelease-1>", self.on_click)
         self.tree.bind("<Double-1>", self.on_double_click)
 
-
     def open_fv_recipe(self) -> None:
         """FVレシピを読み込む。"""
 
@@ -830,7 +826,6 @@ class LogViewer:
                     result.summary,
                     self.language,
                 )
-            print(f"DEBUG fv_result: {result}")
 
         except Exception as e:
             messagebox.showerror(
@@ -989,7 +984,7 @@ class LogViewer:
             log: LogDict | None = validate_log(raw)
             if log is not None:
                 safe_logs.append(log)
-
+        # 単一ログ読み込み時の件数確認なので、残してOKです
         self.logger.debug(
             "reload_log prepared",
             context={
@@ -1043,7 +1038,7 @@ class LogViewer:
 
         # 🔹 データ取得はsearcherに任せる
         logs: list[LogDict] = collect_logs(paths)
-
+        # 複数ログ読み込み時の件数確認なので、残してOKです
         self.logger.debug(
             "open_logs collected",
             context={
@@ -1166,6 +1161,7 @@ class LogViewer:
         self.filtered_rows = []
         self.display_rows = []
         self._event_cache = None
+        # キャッシュ破棄の確認は、今の Viewer の重要な状態遷移なので、ログレベル DEBUG で詳細に記録します
         self.logger.debug(
             "raw_rows replaced and caches cleared",
             context={
@@ -1181,6 +1177,7 @@ class LogViewer:
         """raw_rows 全体に対する summarize 結果を再利用する。"""
         if self._event_cache is None:
             self._event_cache = summarize(self.raw_rows)
+            # _event_cache の再構築は重要状態遷移ですので、ログレベル DEBUG で詳細に記録します
             self.logger.debug(
                 "event cache rebuilt",
                 context={
@@ -1327,7 +1324,6 @@ class LogViewer:
         """時間だけの検索文字列をdatetime形式へ補完する"""
         return build_search_text_datetime(search_text, self.raw_rows, self.current_tz)
 
-
     def apply_filter(self, _event: tk.Event | None = None) -> None:
         """フィルタに応じて表示内容を更新する"""
         trace_filter: str = self.trace_var.get()
@@ -1340,16 +1336,16 @@ class LogViewer:
         self.filtered_rows = []
         self.display_rows = []
 
-        # debag用
-        self.logger.debug(
-            "apply_filter start",
-            context={
-                "start_time": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-                "search": search_text,
-                "raw_rows": len(self.raw_rows),
-                "display_rows": len(self.display_rows),
-            },
-        )
+        # # debag用
+        # self.logger.debug(
+        #     "apply_filter start",
+        #     context={
+        #         "start_time": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        #         "search": search_text,
+        #         "raw_rows": len(self.raw_rows),
+        #         "display_rows": len(self.display_rows),
+        #     },
+        # )
 
         # 🔹 画面クリア
         self.tree.delete(*self.tree.get_children())
@@ -1363,7 +1359,7 @@ class LogViewer:
             tz,
         )
         self.filtered_rows = self._display_raw_rows()
-
+        # もう少し安全に行くなら filter completed だけ残しても良いうと思いますが、Viewerの重要な状態遷移なので、ログレベル DEBUG で詳細に記録します
         self.logger.debug(
             "filter completed",
             context={
@@ -1372,22 +1368,23 @@ class LogViewer:
             },
         )
 
-        # debag用
-        try:
-            self.logger.debug(
-                "filtered_rows prepared",
-                context={
-                    "filtered_rows": len(self.filtered_rows),
-                },
-            )
+        # # debag用
+        # try:
+        #     self.logger.debug(
+        #         "filtered_rows prepared",
+        #         context={
+        #             "filtered_rows": len(self.filtered_rows),
+        #         },
+        #     )
 
-        except Exception as e:
-            self.logger.error(
-                "apply_result_modifiers failed",
-                context={
-                    "error": str(e),
-                    },
-                )
+        # except Exception as e:
+        #     self.logger.error(
+        #         "apply_result_modifiers failed",
+        #         context={
+        #             "error": str(e),
+        #             "filtered_rows": len(self.filtered_rows),
+        #         },
+        #     )
 
         # 🔹 表示
         display_index = 0
@@ -1414,12 +1411,10 @@ class LogViewer:
         else:
             self.aggregate_result_var.set("")
 
-
     def _format_world_local_time(self, value: Any) -> str:
         """UTCをworld_local時間文字列へ変換する"""
         dt: datetime | None = to_world_local_datetime(value, self.current_tz)
         return dt.strftime("%Y-%m-%d %H:%M:%S") if dt is not None else str(value)
-
 
     def on_click(self, event: tk.Event) -> None:
         """シングルクリックで詳細表示"""
@@ -1431,7 +1426,6 @@ class LogViewer:
             200,
             lambda: self._open_detail(event_row),
         )
-
 
     def on_double_click(self, event: tk.Event) -> None:
         """ダブルクリックでVSCodeを開く"""
@@ -1446,14 +1440,12 @@ class LogViewer:
         line_no: int = int(where.get("line", 1))
         self.open_in_vscode(file_path, line_no)
 
-
     def _cancel_pending_single_click(self) -> None:
         """予約済みのシングルクリック処理を取り消す"""
         if self._single_click_after_id is None:
             return
         self.root.after_cancel(self._single_click_after_id)
         self._single_click_after_id = None
-
 
     # ===============================
     # 🔹 Treeから表示Event取得
@@ -1474,7 +1466,6 @@ class LogViewer:
             return None
         return self.display_rows[index]
 
-
     # ===============================
     # 🔹 LogDict → Event変換
     # ===============================
@@ -1487,7 +1478,6 @@ class LogViewer:
         if not events:
             return None
         return events[0]
-
 
     # ===============================
     # 🔹 複数LogDict → Event群
@@ -1511,7 +1501,6 @@ class LogViewer:
             seen.add(raw_id)
             logs.append(event.raw)
         return logs
-
 
     def extract_source_file(self, msg: str) -> tuple[str | None, int]:
         """messageから、filenameを抽出する"""
@@ -1540,7 +1529,14 @@ class LogViewer:
             return file_path, int(line_no)
 
         except Exception as e:
-            print(f"extract error: {e}")  # デバッグ🔥
+            # stable後は消しても良いが、当面はエラーの内容をログに残すようにする。
+            self.logger.debug(
+                "extract_source_file failed",
+                context={
+                    "error": str(e),
+                    "message": msg,
+                },
+            )
             return None, 1
 
     def _unwrap_context_value(self, value: object) -> object:
