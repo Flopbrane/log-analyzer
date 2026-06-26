@@ -63,6 +63,9 @@ SUMMARY_CSV_HEADERS: tuple[str, ...] = (
 )
 
 
+# =========================
+# Public functions
+# =========================
 def select_save_file(
     *,
     defaultextension: str = ".csv",
@@ -204,6 +207,16 @@ def export_investigation_report_json(
         save_file_path=save_file_path,
     )
 
+def export_summary_to_json(
+    summary: SummaryResult,
+    save_file_path: str | Path | None = None,
+) -> Path | None:
+    """SummaryResultをJSONへ出力する。"""
+    return export_to_json(summary=summary, save_file_path=save_file_path)
+
+# ==========================
+# Internal functions
+# ==========================
 
 def _resolve_output_path(
     save_file_path: str | Path | None,

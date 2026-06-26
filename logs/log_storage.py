@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from file_adapter.adapter_types import AdapterResult
+from file_adapter.defender_adapter import adapt_defender_records
 from file_adapter.extra_file_storage import load_extra_records
 
 
@@ -28,11 +29,11 @@ def load_log(log_path: Path) -> list[dict[str, Any]]:
     """ログファイルを読み込む"""
     log_entries: list[dict[str, Any]] | None = _load_json_lines(log_path)
     if log_entries is not None:
-        return log_entries
+        return adapt_defender_records(log_path, log_entries)
 
     result: AdapterResult = load_extra_records(log_path)
     if result.success:
-        return result.records
+        return adapt_defender_records(log_path, result.records)
 
     print(f"Failed to load log file {log_path}: {result.error}")
     return []

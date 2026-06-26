@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import tkinter as tk
+from collections import Counter
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -49,6 +50,7 @@ from logs.result_exporter import (
     export_event_logs_to_csv,
     export_investigation_report_json,
     export_summary_to_csv,
+    export_summary_to_json,
     export_to_json,
 )
 from logs.search_ast import AndNode, EmptyNode, FieldNode, NotNode, OrNode, QueryNode
@@ -138,6 +140,7 @@ class LogViewer:
         self.search_label: tk.Label
         self.search_button: tk.Button
         self.summary_button: tk.Button
+        self.defender_triage_button: tk.Button
         self.export_csv_button: tk.Button
         self.export_json_button: tk.Button
         self.export_report_button: tk.Button
@@ -500,6 +503,174 @@ class LogViewer:
         )
         SummaryWindow(self.root, result, self.language)
 
+    def open_defender_triage_window(self) -> None:
+        """Defender調査向けの triage 要約を開く。"""
+        summary_logs: list[LogDict] = self._display_raw_rows()
+        if not summary_logs:
+            messagebox.showinfo(self._t("summary_no_logs_title"), self._t("summary_no_logs_message"))
+            return
+
+        if not any(self._is_defender_log(row) for row in summary_logs):
+            messagebox.showinfo(
+                "Defender Triage",
+                "現在の表示ログには Defender 調査JSONLが含まれていません。",
+            )
+            return
+
+        report_text: str = self._build_defender_triage_text(summary_logs)
+        TextReportWindow(
+            self.root,
+            title="Defender Triage",
+            text=report_text,
+            language=self.language,
+        )
+
+    def _is_defender_log(self, row: LogDict) -> bool:
+        """Defender adapter 由来のログか判定する。"""
+        context: dict[str, Any] = row.get("context", {})
+        source_kind: str = str(context.get("source_kind", ""))
+        return source_kind.startswith("defender_")
+
+    def _build_defender_triage_text(self, logs: list[LogDict]) -> str:
+        """表示中 Defender ログから alert/watch/allow を構築する。"""
+        alert_items: list[str] = []
+        watch_items: list[str] = []
+        allow_items: list[str] = []
+        source_counter: Counter[str] = Counter()
+
+        for row in logs:
+            if not self._is_defender_log(row):
+                continue
+            context: dict[str, Any] = row.get("context", {})
+            source_kind: str = str(context.get("source_kind", "defender_unknown"))
+            source_counter[source_kind] += 1
+            message: str = str(row.get("what", {}).get("message", ""))
+            original_record: dict[str, Any] = cast(dict[str, Any], context.get("original_record", {}))
+            item_text: str = self._build_defender_item_text(row, original_record)
+
+            if self._is_defender_alert(row, message, original_record):
+                alert_items.append(item_text)
+            elif self._is_defender_allow(row, message, original_record):
+                allow_items.append(item_text)
+            else:
+                watch_items.append(item_text)
+
+        lines: list[str] = [
+            "# Defender Triage Summary",
+            "",
+            f"- Visible Defender items: {len(alert_items) + len(watch_items) + len(allow_items)}",
+            f"- Alert: {len(alert_items)}",
+            f"- Watch: {len(watch_items)}",
+            f"- Allow: {len(allow_items)}",
+            "",
+            "## Source Breakdown",
+        ]
+
+        for source_kind, count in sorted(source_counter.items()):
+            lines.append(f"- {source_kind}: {count}")
+
+        def append_section(title: str, items: list[str]) -> None:
+            lines.extend(["", f"## {title}"])
+            if not items:
+                lines.append("- None")
+                return
+            for item in items[:20]:
+                lines.append(f"- {item}")
+
+        append_section("Alert", alert_items)
+        append_section("Watch", watch_items)
+        append_section("Allow", allow_items)
+
+        lines.extend(
+            [
+                "",
+                "## Triage Target",
+                "- Alert は Defender 検出履歴や Defender 無効化痕跡を最優先で確認する対象です。",
+                "- Watch は未署名・署名異常・Roaming 配下の実行ファイルなど、追加確認が必要な対象です。",
+                "- Allow は既知ベンダ署名や既知パスがあり、通常は誤警報ノイズとして抑えたい対象です。",
+            ]
+        )
+        return "\n".join(lines)
+
+    def _build_defender_item_text(self, row: LogDict, original_record: dict[str, Any]) -> str:
+        """Defender triage 用の1行表示を作る。"""
+        source_kind: str = str(row.get("context", {}).get("source_kind", ""))
+        path_text: str = str(
+            original_record.get("FullName")
+            or original_record.get("ProcessName")
+            or original_record.get("RegistryPath")
+            or original_record.get("Execute")
+            or original_record.get("Command")
+            or row.get("where", {}).get("file", "")
+        )
+        message: str = str(row.get("what", {}).get("message", ""))
+        return f"[{source_kind}] {path_text} | {message}"
+
+    def _is_defender_alert(
+        self,
+        row: LogDict,
+        message: str,
+        original_record: dict[str, Any],
+    ) -> bool:
+        """alert 判定。"""
+        source_kind: str = str(row.get("context", {}).get("source_kind", ""))
+        message_lower: str = message.lower()
+        path_text: str = str(
+            original_record.get("FullName")
+            or original_record.get("ProcessName")
+            or original_record.get("Value")
+            or original_record.get("Resources")
+            or ""
+        ).lower()
+        return (
+            source_kind == "defender_threat_detection"
+            or "disableantispyware" in message_lower
+            or "disableantispyware" in path_text
+            or r"c:\users\cam_f\1\updater.exe" in path_text
+        )
+
+    def _is_defender_allow(
+        self,
+        row: LogDict,
+        _message: str,
+        original_record: dict[str, Any],
+    ) -> bool:
+        """allow 判定。"""
+        source_kind: str = str(row.get("context", {}).get("source_kind", ""))
+        if source_kind not in {
+            "defender_executable_scan",
+            "defender_startup",
+            "defender_scheduled_task",
+            "defender_run_key",
+        }:
+            return False
+
+        signer_text: str = str(original_record.get("SignerCertificate", "")).lower()
+        signature_status: str = str(original_record.get("SignatureStatus", "")).lower()
+        path_text: str = str(
+            original_record.get("FullName")
+            or original_record.get("Value")
+            or original_record.get("Execute")
+            or original_record.get("Command")
+            or ""
+        ).lower()
+        known_hints = (
+            "microsoft",
+            "zoom",
+            "discord",
+            "google",
+            "nvidia",
+            "intel",
+            "adobe",
+            "axosoft",
+            "gitkraken",
+            "logitech",
+        )
+        return (
+            signature_status == "valid"
+            and any(hint in signer_text or hint in path_text for hint in known_hints)
+        )
+
     def export_filtered_events_csv(self) -> None:
         """検索結果からEvent化できた有意ログをCSVへ保存する。"""
         events: list[Event] = list(self.display_rows)
@@ -646,6 +817,12 @@ class LogViewer:
             command=self.open_summary_window,
         )
         self.summary_button.pack(side=tk.LEFT, padx=(8, 0))
+        self.defender_triage_button = tk.Button(
+            filter_frame,
+            text="Defender Triage",
+            command=self.open_defender_triage_window,
+        )
+        self.defender_triage_button.pack(side=tk.LEFT, padx=(8, 0))
         # エクスポートボタン
         self.export_csv_button = tk.Button(
             filter_frame,
@@ -1770,9 +1947,11 @@ class SummaryWindow:
         self._build_ui()
 
     def _t(self, key: str) -> str:
+        """翻訳"""
         return translate(key, self.language)
 
     def _build_ui(self) -> None:
+        """UI構築"""
         frame = tk.Frame(self.window)
         frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -1836,7 +2015,8 @@ class SummaryWindow:
         )
 
     def _export_summary_json(self) -> None:
-        output_path: Path | None = export_to_json(summary=self.result)
+        """サマリーをJSON形式でエクスポート"""
+        output_path: Path | None = export_summary_to_json(self.result)
         if output_path is None:
             return
         messagebox.showinfo(
@@ -1844,6 +2024,66 @@ class SummaryWindow:
             self._t("export_complete_message").format(path=output_path),
             parent=self.window,
         )
+
+class TextReportWindow:
+    """任意テキストを表示する簡易レポートウィンドウ。"""
+
+    def __init__(self, parent: WindowWidget, title: str, text: str, language: LanguageCode) -> None:
+        self.parent = parent
+        self.title = title
+        self.text = text
+        self.language = language
+        self.window = tk.Toplevel(parent)
+        self.window.title(title)
+        self.window.geometry("900x560")
+        self.window.transient(parent)
+        self._build_ui()
+
+    def _t(self, key: str) -> str:
+        return translate(key, self.language)
+
+    def _build_ui(self) -> None:
+        frame = tk.Frame(self.window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        button_frame = tk.Frame(frame)
+        button_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Button(
+            button_frame,
+            text=self._t("button_close"),
+            command=self.window.destroy,
+        ).pack(side=tk.RIGHT)
+        tk.Button(
+            button_frame,
+            text=self._t("button_copy_summary"),
+            command=self._copy_text,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
+
+        y_scrollbar = tk.Scrollbar(frame)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        x_scrollbar = tk.Scrollbar(frame, orient="horizontal")
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        text_area = tk.Text(
+            frame,
+            wrap="none",
+            font=("Consolas", 11),
+            yscrollcommand=y_scrollbar.set,
+            xscrollcommand=x_scrollbar.set,
+            undo=False,
+        )
+        text_area.pack(fill=tk.BOTH, expand=True)
+        y_scrollbar.config(command=text_area.yview)  # type: ignore[union-attr]
+        x_scrollbar.config(command=text_area.xview)  # type: ignore[union-attr]
+        text_area.insert("1.0", self.text)
+        text_area.config(state="disabled")
+        text_area.focus_set()
+
+    def _copy_text(self) -> None:
+        """テキストをクリップボードにコピー"""
+        self.window.clipboard_clear()
+        self.window.clipboard_append(self.text)
 
 
 if __name__ == "__main__":

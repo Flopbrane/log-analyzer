@@ -19,6 +19,7 @@ RawRecords: TypeAlias = list[RawRecord]
 
 
 class FileAdapterFormat(str, Enum):
+    """ファイルアダプタのフォーマット"""
     JSON = "json"
     CSV = "csv"
     APACHE = "apache"
@@ -30,6 +31,7 @@ class FileAdapterFormat(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class AdapterResult:
+    """アダプタの処理結果"""
     records: RawRecords
     format_name: str
     success: bool

@@ -58,6 +58,10 @@ def validate_log(
         return None
     message: str = message_raw
     what: LogWhat = {"message": message}
+    for optional_key in ("action", "status", "category"):
+        optional_value: object = raw_what_dict.get(optional_key)
+        if isinstance(optional_value, str) and optional_value:
+            what[optional_key] = optional_value
 
     # where
     raw_where: object = normalized.get("where")
